@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>04 — Evidence chain · Vigil</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  .stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr 260px;
+    gap: 24px;
+    min-height: 0;
+  }
+
+  /* Breadcrumb across the top of the chain column */
+  .crumbs {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-low);
+    margin-bottom: 18px;
+  }
+  .crumb {
+    transition: color var(--dur) var(--ease-out);
+  }
+  .crumb.is-on { color: var(--ink-hi); }
+  .crumb__sep { color: var(--ink-mute); }
+  .crumb.is-on + .crumb__sep { color: var(--ink-low); }
+
+  /* The chain column */
+  .chain-col {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    min-height: 0;
+  }
+
+  .chain {
+    display: grid;
+    grid-template-rows: 0.9fr 1.05fr 1.15fr 1.5fr;
+    gap: 14px;
+    min-height: 0;
+  }
+
+  .lvl {
+    position: relative;
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    padding: 14px 22px 14px 76px;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 8px;
+    min-height: 0;
+    transition:
+      border-color var(--dur) var(--ease-out),
+      background var(--dur) var(--ease-out),
+      transform var(--dur) var(--ease-out),
+      opacity var(--dur) var(--ease-out);
+    opacity: 0.25;
+    transform: translateX(-6px);
+  }
+  .lvl.is-on {
+    opacity: 1;
+    transform: translateX(0);
+    border-color: var(--ink-hi);
+    background: var(--surface-2);
+  }
+  .lvl__rail {
+    position: absolute;
+    top: 0; bottom: -18px;
+    left: 36px;
+    width: 1px;
+    background: var(--rule);
+    transition: background var(--dur) var(--ease-out);
+  }
+  .lvl:last-child .lvl__rail { bottom: 0; }
+  .lvl.is-on .lvl__rail { background: var(--ink-hi); }
+  .lvl__dot {
+    position: absolute;
+    top: 22px;
+    left: 30px;
+    width: 13px;
+    height: 13px;
+    border: 1.4px solid var(--ink-mute);
+    background: var(--plane);
+    border-radius: 50%;
+    transition: border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
+  }
+  .lvl.is-on .lvl__dot {
+    border-color: var(--ink-hi);
+    background: var(--ink-hi);
+  }
+  .lvl.is-on .lvl__dot::after {
+    content: "";
+    position: absolute;
+    inset: -5px;
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 50%;
+  }
+
+  .lvl__head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: baseline;
+  }
+  .lvl__role {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+  }
+  .lvl__role b { color: var(--ink-hi); font-weight: 500; }
+  .lvl__meta {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-low);
+  }
+  .lvl.is-on .lvl__meta { color: var(--ink-mid); }
+
+  .lvl__body {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--ink-mid);
+    line-height: 1.35;
+    letter-spacing: -0.015em;
+    transition: color var(--dur) var(--ease-out);
+  }
+  .lvl.is-on .lvl__body { color: var(--ink-hi); }
+  .lvl__body em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-mid);
+    letter-spacing: -0.005em;
+  }
+
+  .lvl__detail {
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.55;
+    color: var(--ink-mid);
+    background: var(--plane);
+    border: 1px solid var(--rule);
+    padding: 10px 14px;
+    transition: color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
+    overflow: auto;
+    min-height: 0;
+  }
+  .lvl.is-on .lvl__detail { color: var(--ink); border-color: var(--rule-strong); }
+  .lvl__detail b { color: var(--ink-hi); font-weight: 500; }
+  .lvl__detail .k { color: var(--ink-low); }
+  .lvl__detail .s { color: var(--ink); }
+  .lvl__detail .em { color: var(--ink-hi); }
+
+  .lvl__foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .drill-btn {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-low);
+    padding: 6px 12px;
+    border: 1px solid var(--rule);
+    background: transparent;
+    transition: color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
+  }
+  .lvl.is-on .drill-btn { color: var(--ink-hi); border-color: var(--ink-hi); }
+  .drill-btn[disabled] { opacity: 0.35; }
+  .lvl__source {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-low);
+  }
+  .lvl.is-on .lvl__source { color: var(--ink-mid); }
+
+  /* Last level — show the "bytes" badge solid */
+  .lvl--raw.is-on {
+    background: var(--surface-2);
+    background-image:
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.025) 0 6px, transparent 6px 12px);
+  }
+
+  /* ---------- Right column: trust narrative ---------- */
+  .trust {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 18px;
+    min-height: 0;
+    padding: 8px 0;
+  }
+  .trust__title {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink-hi);
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+  }
+  .trust__title em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-mid);
+  }
+  .trust__list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .trust__item {
+    border-left: 1px solid var(--rule);
+    padding: 6px 0 6px 14px;
+    font-family: var(--body);
+    font-weight: 300;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ink-mute);
+    transition: color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
+  }
+  .trust__item.is-on {
+    border-left-color: var(--ink-hi);
+    color: var(--ink);
+  }
+  .trust__item-num {
+    display: block;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-low);
+    margin-bottom: 4px;
+  }
+  .trust__item.is-on .trust__item-num { color: var(--ink-hi); }
+  .trust__item b { color: var(--ink-hi); font-weight: 500; }
+
+  .trust__seal {
+    padding: 16px;
+    border: 1px dashed var(--rule);
+    opacity: 0;
+    transition: opacity var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
+  }
+  body[data-step="4"] .trust__seal {
+    opacity: 1;
+    border-color: var(--ink-hi);
+    background-image:
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 6px, transparent 6px 12px);
+  }
+  .trust__seal-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-hi);
+    margin-bottom: 8px;
+  }
+  .trust__seal-body {
+    font-family: var(--display);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink-hi);
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+  }
+  .trust__seal-body em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-mid);
+  }
+</style>
+</head>
+<body data-step="0">
+<div class="frame">
+
+  <header class="frame__head">
+    <div class="head__num">04 · v3 §23
+      <strong>Evidence linking</strong>
+    </div>
+    <div>
+      <h1 class="head__title">Every claim links <em>to the bytes that justify it.</em></h1>
+      <p class="head__sub">Four drill levels — claim, reasoning, agent observation, raw observation. The operator can stop at any level, or drill all the way down. There is never a step where the trail goes cold.</p>
+    </div>
+    <div class="head__meta">
+      <div>Vigil · <strong>v3</strong></div>
+      <div>scene <strong>04 / 04</strong></div>
+    </div>
+  </header>
+
+  <section class="frame__stage">
+    <div class="demo-pill">Demo · <b>drill</b></div>
+
+    <div class="stage">
+
+      <div class="chain-col">
+
+        <div class="crumbs">
+          <span class="crumb" data-reveal="1">Insight</span>
+          <span class="crumb__sep">›</span>
+          <span class="crumb" data-reveal="2">Reasoning</span>
+          <span class="crumb__sep">›</span>
+          <span class="crumb" data-reveal="3">Agent observation</span>
+          <span class="crumb__sep">›</span>
+          <span class="crumb" data-reveal="4">Raw observation</span>
+        </div>
+
+        <div class="chain">
+
+          <!-- Level 1 — Claim -->
+          <div class="lvl" data-reveal="1">
+            <div class="lvl__rail"></div>
+            <div class="lvl__dot"></div>
+            <div class="lvl__head">
+              <div class="lvl__role">Level 1 · <b>claim</b></div>
+              <div class="lvl__meta">insight · narrated by interpreter</div>
+            </div>
+            <div class="lvl__body">
+              Currency pod is restarting <em>under memory pressure.</em>
+            </div>
+            <div class="lvl__foot">
+              <div class="lvl__source">source · interpreter@v3.2.1</div>
+              <button class="drill-btn">drill into reasoning ↓</button>
+            </div>
+          </div>
+
+          <!-- Level 2 — Reasoning -->
+          <div class="lvl" data-reveal="2">
+            <div class="lvl__rail"></div>
+            <div class="lvl__dot"></div>
+            <div class="lvl__head">
+              <div class="lvl__role">Level 2 · <b>reasoning</b></div>
+              <div class="lvl__meta">pattern · from playbook signature</div>
+            </div>
+            <div class="lvl__detail">
+              <span class="k">playbook_id</span>   <span class="em">memory_pressure_cascade</span><br/>
+              <span class="k">signature</span>     <span class="s">heap_used &gt; 0.85 × limit for ≥ 90s, then <b>OOMKilled</b> within 30s</span><br/>
+              <span class="k">match</span>         <span class="s">heap_used <b>0.91 × limit</b> for <b>112s</b>, OOMKilled at <b>14:02:11Z</b></span><br/>
+              <span class="k">scope</span>         <span class="s">ns=<b>shop</b> · pod=<b>currencyservice-7b4f9</b></span>
+            </div>
+            <div class="lvl__foot">
+              <div class="lvl__source">source · pattern lib v3.2.1</div>
+              <button class="drill-btn">drill into agent observation ↓</button>
+            </div>
+          </div>
+
+          <!-- Level 3 — Agent observation -->
+          <div class="lvl" data-reveal="3">
+            <div class="lvl__rail"></div>
+            <div class="lvl__dot"></div>
+            <div class="lvl__head">
+              <div class="lvl__role">Level 3 · <b>agent observation</b></div>
+              <div class="lvl__meta">run trace · per-detector</div>
+            </div>
+            <div class="lvl__detail">
+              <span class="k">agent</span>     <span class="em">interpreter.heap_pressure</span>  <span class="k">@</span> <span class="s">2026-05-18T14:02:11Z</span><br/>
+              <span class="k">inputs</span>    <span class="s">var_heap_used · var_container_memory_limit · evt.OOMKilled</span><br/>
+              <span class="k">bindings</span>  <span class="s">all <b>high-confidence</b> · T1 catalog v2.4</span><br/>
+              <span class="k">cost</span>      <span class="s">detect <b>0 tok</b> (deterministic) · narration <b>1 call · 412 tok</b></span>
+            </div>
+            <div class="lvl__foot">
+              <div class="lvl__source">source · run log · trace-id <b style="color:var(--ink-hi);">7c4a…f201</b></div>
+              <button class="drill-btn">drill into raw observation ↓</button>
+            </div>
+          </div>
+
+          <!-- Level 4 — Raw observation -->
+          <div class="lvl lvl--raw" data-reveal="4">
+            <div class="lvl__rail"></div>
+            <div class="lvl__dot"></div>
+            <div class="lvl__head">
+              <div class="lvl__role">Level 4 · <b>raw observation</b></div>
+              <div class="lvl__meta">bytes from cluster · TSDB + event log</div>
+            </div>
+            <div class="lvl__detail">
+              <span class="k"># metric · container memory @ 14:02:09Z</span><br/>
+              <span class="s">container_memory_working_set_bytes <b>524288000</b>  <span class="k">{</span>pod=<span class="em">"currencyservice-7b4f9"</span>, ns=<span class="em">"shop"</span><span class="k">}</span></span><br/>
+              <span class="k"># limit · from kube-state-metrics</span><br/>
+              <span class="s">kube_pod_container_resource_limits <b>576716800</b>  <span class="k">{</span>resource=<span class="em">"memory"</span>, pod=<span class="em">"currencyservice-7b4f9"</span><span class="k">}</span></span><br/>
+              <span class="k"># event @ 14:02:11Z</span><br/>
+              <span class="s">reason=<span class="em">"OOMKilled"</span> count=<b>1</b> involvedObject=<span class="em">"Pod/currencyservice-7b4f9"</span></span>
+            </div>
+            <div class="lvl__foot">
+              <div class="lvl__source">source · TSDB · event stream · <b style="color:var(--ink-hi);">verifiable in customer cluster</b></div>
+              <button class="drill-btn" disabled>bottom of chain · operator-verifiable</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- RIGHT: trust narrative -->
+      <div class="trust">
+        <div>
+          <div class="trust__title">Why this <em>matters.</em></div>
+        </div>
+        <div class="trust__list">
+          <div class="trust__item" data-reveal="1">
+            <span class="trust__item-num">01 · claim</span>
+            The operator sees a one-line story they can act on. Nothing in the UI hides what's behind it.
+          </div>
+          <div class="trust__item" data-reveal="2">
+            <span class="trust__item-num">02 · reasoning</span>
+            The pattern that fired is <b>named, versioned, and inspectable</b>. There is no opaque model output to argue with.
+          </div>
+          <div class="trust__item" data-reveal="3">
+            <span class="trust__item-num">03 · agent</span>
+            Run trace shows <b>which agent</b>, <b>which inputs</b>, <b>which bindings</b>, and <b>how many LLM tokens</b>. Every cost is accounted for.
+          </div>
+          <div class="trust__item" data-reveal="4">
+            <span class="trust__item-num">04 · raw</span>
+            The bytes that justify the claim live in the customer's own cluster. A skeptical operator can re-run the kubectl query themselves.
+          </div>
+        </div>
+        <div class="trust__seal">
+          <div class="trust__seal-title">Trust contract</div>
+          <div class="trust__seal-body">
+            Surface, <em>do not act.</em> Every claim is <em>operator-verifiable.</em> No mystery boxes.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="frame__foot">
+    <div class="foot__hint">
+      <b>SPACE</b> advance · <b>←</b> back · <b>R</b> reset · <b>F</b> fullscreen
+    </div>
+    <div class="foot__step">
+      Step <span data-step-label>00</span> <span class="total">/ <span data-step-total>04</span></span>
+    </div>
+    <div class="foot__caption">
+      An insight you can't drill into is a guess. Every Vigil insight has a path down to the bytes.
+    </div>
+  </footer>
+
+</div>
+
+<script>window.TOTAL_STEPS = 4;</script>
+<script src="shared.js"></script>
+</body>
+</html>

@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>01 — System architecture · Vigil</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  .stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-columns: 200px 1fr 240px;
+    gap: 24px;
+  }
+  .stage__col-layers,
+  .stage__col-diagram,
+  .stage__col-legend { position: relative; min-height: 0; }
+  .stage__col-diagram {
+    border-left: 1px dashed var(--rule-strong);
+    border-right: 1px dashed var(--rule-strong);
+    padding: 0 24px;
+  }
+
+  /* ------------------------------------------------------------
+     Shared row grid — 7 layer rows. Both columns use it.
+     ------------------------------------------------------------ */
+  .row-grid {
+    display: grid;
+    grid-template-rows:
+      1.1fr   /* 0 Cluster */
+      0.95fr  /* 1 Ingestion (agent) */
+      1.05fr  /* 2 Schema binding (net + binding) */
+      1.25fr  /* 3 Storage & construction */
+      1.05fr  /* 4 Reasoning */
+      0.95fr  /* 5 Insights (interpreters) */
+      0.95fr; /* 6 Operator UX */
+    gap: 10px;
+    height: 100%;
+    min-height: 0;
+  }
+
+  /* Layer labels (left column) */
+  .layers .layer-label {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0;
+  }
+  .layers .num {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    color: var(--ink-mute);
+    text-transform: uppercase;
+    transition: color var(--dur) var(--ease-out);
+  }
+  .layers .layer-label.is-on .num { color: var(--ink-hi); }
+  .layers strong {
+    display: block;
+    margin-top: 6px;
+    font-family: var(--display);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-mid);
+    transition: color var(--dur) var(--ease-out);
+  }
+  .layers .layer-label.is-on strong { color: var(--ink); }
+
+  /* Each diagram row */
+  .lane {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    min-height: 0;
+  }
+  .lane--cols-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .lane--cols-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .lane--single { display: flex; }
+  .lane--single .node { min-width: 60%; }
+
+  /* Binding lane has the network boundary stacked on top */
+  .lane--binding {
+    flex-direction: column;
+    gap: 0;
+  }
+  .lane--binding .net {
+    width: 100%;
+    border-top: 1px dashed var(--rule-strong);
+    position: relative;
+    height: 0;
+    margin-bottom: 12px;
+  }
+  .lane--binding .net__label {
+    position: absolute;
+    top: -8px;
+    right: 0;
+    background: var(--plane);
+    padding: 0 10px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-low);
+  }
+  .lane--binding .node { min-width: 55%; }
+
+  /* Storage lane has the "canonical observations" label above the 3 nodes */
+  .lane--storage {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .lane--storage .canon {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.28em;
+    color: var(--ink-low);
+    text-transform: uppercase;
+    text-align: center;
+  }
+  .lane--storage .stor-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    width: 100%;
+  }
+
+  /* Compact node sizing */
+  .node {
+    padding: 9px 12px 10px;
+    font-size: 12.5px;
+    text-align: center;
+    line-height: 1.22;
+  }
+  .node small {
+    margin-top: 4px;
+    font-size: 8.5px;
+  }
+  .node--hero { padding: 11px 14px 12px; }
+
+  /* Cross-cuts overlay (Context / Annotation) — only at step 8 */
+  .crosscuts {
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 0; right: 0;
+    pointer-events: none;
+    display: flex;
+    gap: 32px;
+    justify-content: center;
+    align-items: stretch;
+    padding: 6px 0;
+  }
+  .crosscut {
+    width: 132px;
+    border: 1px dashed var(--rule-strong);
+    background-image:
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 6px, transparent 6px 12px);
+    position: relative;
+    opacity: 0;
+    transition: opacity var(--dur) var(--ease-out);
+  }
+  body[data-step="8"] .crosscut { opacity: 1; border-color: var(--ink-hi); }
+  .crosscut__label {
+    position: absolute;
+    top: 8px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--plane);
+    padding: 3px 9px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-hi);
+    white-space: nowrap;
+  }
+  .crosscut__hint {
+    position: absolute;
+    bottom: 8px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--plane);
+    padding: 3px 9px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    white-space: nowrap;
+  }
+
+  /* Commentary column */
+  .commentary { padding: 0; }
+  .commentary .item {
+    display: flex;
+    align-items: center;
+    padding: 8px 0 8px 14px;
+    border-left: 1px solid var(--rule);
+    transition: border-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
+  }
+  .commentary .item-body {
+    font-family: var(--body);
+    font-weight: 300;
+    font-size: 11.5px;
+    line-height: 1.45;
+    color: var(--ink-mute);
+    transition: color var(--dur) var(--ease-out);
+  }
+  .commentary .item.is-on { border-left-color: var(--ink-hi); }
+  .commentary .item.is-on .item-body { color: var(--ink); }
+  .commentary .item-num {
+    display: block;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-low);
+    margin-bottom: 3px;
+  }
+  .commentary .item.is-on .item-num { color: var(--ink-hi); }
+
+  /* The commentary column has 8 items mapped to 7 layer rows + a "cross-cuts" item.
+     Use its own 8-row grid that lines up roughly with the 7 diagram rows + foot. */
+  .commentary.row-grid {
+    grid-template-rows: repeat(8, 1fr);
+    gap: 6px;
+  }
+</style>
+</head>
+<body data-step="0">
+<div class="frame">
+
+  <header class="frame__head">
+    <div class="head__num">01 · v3 §4
+      <strong>System architecture</strong>
+    </div>
+    <div>
+      <h1 class="head__title">Cluster <em>to operator,</em> in six layers.</h1>
+      <p class="head__sub">Telemetry leaves the cluster, gets renamed once, is stored and reasoned over, and surfaces as evidence the operator can trust. Two cross-cuts modify behaviour without changing the path.</p>
+    </div>
+    <div class="head__meta">
+      <div>Vigil · <strong>v3</strong></div>
+      <div>scene <strong>01 / 04</strong></div>
+    </div>
+  </header>
+
+  <section class="frame__stage">
+    <div class="demo-pill">Demo · <b>build-up</b></div>
+
+    <div class="stage">
+
+      <!-- LEFT: layer labels -->
+      <div class="stage__col-layers">
+        <div class="layers row-grid">
+          <div class="layer-label" data-reveal="1">
+            <span class="num">Layer 0</span><strong>Cluster</strong>
+          </div>
+          <div class="layer-label" data-reveal="2">
+            <span class="num">Layer 1</span><strong>Ingestion</strong>
+          </div>
+          <div class="layer-label" data-reveal="3">
+            <span class="num">Layer 2</span><strong>Schema binding</strong>
+          </div>
+          <div class="layer-label" data-reveal="4">
+            <span class="num">Layer 3</span><strong>Storage &amp; construction</strong>
+          </div>
+          <div class="layer-label" data-reveal="5">
+            <span class="num">Layer 4</span><strong>Reasoning</strong>
+          </div>
+          <div class="layer-label" data-reveal="6">
+            <span class="num">Layer 5</span><strong>Insights</strong>
+          </div>
+          <div class="layer-label" data-reveal="7">
+            <span class="num">Layer 6</span><strong>Operator UX</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTER: diagram -->
+      <div class="stage__col-diagram">
+
+        <!-- cross-cuts (Context / Annotation) — overlay, only at step 8 -->
+        <div class="crosscuts">
+          <div class="crosscut">
+            <div class="crosscut__label">Context</div>
+            <div class="crosscut__hint">Maint · chaos · deploys</div>
+          </div>
+          <div class="crosscut">
+            <div class="crosscut__label">Annotation</div>
+            <div class="crosscut__hint">Operator feedback</div>
+          </div>
+        </div>
+
+        <div class="diagram row-grid" style="position:relative; z-index:2;">
+
+          <!-- Layer 0 — Cluster -->
+          <div class="lane lane--cols-4">
+            <div class="node" data-reveal="1">K8s API <small>watches</small></div>
+            <div class="node" data-reveal="1">Prometheus / OTel <small>scrape</small></div>
+            <div class="node" data-reveal="1">Logs <small>kubelet · agg</small></div>
+            <div class="node" data-reveal="1">Events <small>stream</small></div>
+          </div>
+
+          <!-- Layer 1 — Ingestion (customer-side agent) -->
+          <div class="lane lane--single">
+            <div class="node node--hero" data-reveal="2">
+              Customer-side agent
+              <small>inventory · hot-path relabel · drift queue · self-policing</small>
+            </div>
+          </div>
+
+          <!-- Layer 2 — Schema binding (net boundary stacked on top) -->
+          <div class="lane lane--binding">
+            <div class="net" data-reveal="3">
+              <div class="net__label">— network boundary —</div>
+            </div>
+            <div class="node node--hero" data-reveal="3">
+              Binding subsystem
+              <small>tier cascade · capability degradation report</small>
+            </div>
+          </div>
+
+          <!-- Layer 3 — Storage & construction (canonical label on top) -->
+          <div class="lane lane--storage">
+            <div class="canon" data-reveal="4">↓ canonical-named observations ↓</div>
+            <div class="stor-grid">
+              <div class="node" data-reveal="4">
+                Semantic graph
+                <small>topology · entities · edges</small>
+              </div>
+              <div class="node" data-reveal="4">
+                Quantitative state
+                <small>TSDB · rate-of-change</small>
+              </div>
+              <div class="node" data-reveal="4">
+                Constructor agents
+                <small>per-domain · deterministic</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Layer 4 — Reasoning -->
+          <div class="lane lane--cols-3">
+            <div class="node" data-reveal="5">
+              Signal detection
+              <small>playbook patterns</small>
+            </div>
+            <div class="node node--warn" data-reveal="5">
+              Exploratory agent
+              <small>no playbook match · hypothesis</small>
+            </div>
+            <div class="node node--live" data-reveal="5">
+              Master agent
+              <small>cross-domain synthesis · chat</small>
+            </div>
+          </div>
+
+          <!-- Layer 5 — Insights (interpreters) -->
+          <div class="lane lane--single">
+            <div class="node node--hero" data-reveal="6">
+              Interpreter agents
+              <small>narrative composition · evidence linking</small>
+            </div>
+          </div>
+
+          <!-- Layer 6 — Operator UX -->
+          <div class="lane lane--cols-4">
+            <div class="node" data-reveal="7">Topology</div>
+            <div class="node" data-reveal="7">Insights</div>
+            <div class="node" data-reveal="7">Timeline</div>
+            <div class="node" data-reveal="7">Ask · chat</div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- RIGHT: commentary -->
+      <div class="stage__col-legend">
+        <div class="commentary row-grid">
+          <div class="item" data-reveal="1">
+            <div class="item-body">
+              <span class="item-num">01 · cluster</span>
+              Raw signal sources: API watches, Prom / OTel, logs, events.
+            </div>
+          </div>
+          <div class="item" data-reveal="2">
+            <div class="item-body">
+              <span class="item-num">02 · agent</span>
+              Bounded resource use. Hot-path renames only; nothing interpreted on the customer side.
+            </div>
+          </div>
+          <div class="item" data-reveal="3">
+            <div class="item-body">
+              <span class="item-num">03 · binding</span>
+              Customer schemas resolved at discovery time so every downstream component sees canonical names.
+            </div>
+          </div>
+          <div class="item" data-reveal="4">
+            <div class="item-body">
+              <span class="item-num">04 · storage</span>
+              Graph for shape, TSDB for numbers, constructors for derived edges. Determinism guaranteed.
+            </div>
+          </div>
+          <div class="item" data-reveal="5">
+            <div class="item-body">
+              <span class="item-num">05 · reasoning</span>
+              Three paths in parallel — known patterns, unknown patterns, cross-domain synthesis.
+            </div>
+          </div>
+          <div class="item" data-reveal="6">
+            <div class="item-body">
+              <span class="item-num">06 · insights</span>
+              LLMs compose narrative <em>only</em> after deterministic detection has fired.
+            </div>
+          </div>
+          <div class="item" data-reveal="7">
+            <div class="item-body">
+              <span class="item-num">07 · operator</span>
+              Surface, do not act. Every claim links to the bytes that justify it.
+            </div>
+          </div>
+          <div class="item" data-reveal="8">
+            <div class="item-body">
+              <span class="item-num">08 · cross-cuts</span>
+              Context windows and operator annotations modify behaviour without changing the path.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="frame__foot">
+    <div class="foot__hint">
+      <b>SPACE</b> advance · <b>←</b> back · <b>R</b> reset · <b>F</b> fullscreen
+    </div>
+    <div class="foot__step">
+      Step <span data-step-label>00</span> <span class="total">/ <span data-step-total>08</span></span>
+    </div>
+    <div class="foot__caption">
+      KG construction is deterministic. Statistical methods are narrow. LLM placement is bounded. Coverage is honest.
+    </div>
+  </footer>
+
+</div>
+
+<script>window.TOTAL_STEPS = 8;</script>
+<script src="shared.js"></script>
+</body>
+</html>

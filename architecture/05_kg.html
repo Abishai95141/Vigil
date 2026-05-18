@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>05 — Knowledge graph · Vigil</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  body { overflow: hidden; }
+  body::after { opacity: 0.18; }
+
+  .kg-wrap {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    padding: 28px 40px;
+    gap: 18px;
+  }
+
+  /* HEAD */
+  .kg-head {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 40px;
+    align-items: end;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .kg-head__num {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+  }
+  .kg-head__num strong {
+    display: block;
+    margin-top: 6px;
+    font-family: var(--display);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-hi);
+    letter-spacing: 0.04em;
+    text-transform: none;
+  }
+  .kg-head__title {
+    font-family: var(--display);
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--ink-hi);
+    line-height: 1;
+  }
+  .kg-head__title em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-mid);
+    letter-spacing: -0.01em;
+  }
+  .kg-head__sub {
+    margin-top: 6px;
+    font-family: var(--body);
+    font-weight: 300;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--ink-mid);
+    max-width: 720px;
+  }
+  .kg-head__meta {
+    text-align: right;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    line-height: 1.9;
+  }
+  .kg-head__meta strong { color: var(--ink-hi); font-weight: 500; }
+
+  /* STAGE */
+  .kg-stage {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 1fr 260px;
+    gap: 24px;
+  }
+  .kg-canvas {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border: 1px dashed var(--rule);
+  }
+  .kg-canvas__inner {
+    position: absolute;
+    inset: 0;
+    transition: transform 1.6s cubic-bezier(0.22, 1, 0.36, 1);
+    transform-origin: center center;
+  }
+  .kg-canvas__inner.is-zoomed { transform: scale(2.6) translate(var(--tx, 0px), var(--ty, 0px)); }
+  .kg-canvas svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* Edges */
+  .kg-edge {
+    stroke: var(--ink-low);
+    stroke-width: 0.9;
+    fill: none;
+    opacity: 0;
+    transition: opacity 1.8s var(--ease-out), stroke 1s var(--ease-out), stroke-width 0.6s var(--ease-out);
+  }
+  .kg-edge.is-on { opacity: 0.55; }
+  .kg-edge.is-focus { stroke: var(--ink-hi); opacity: 1; stroke-width: 1.4; }
+  .kg-edge.is-dim   { opacity: 0.06; }
+
+  /* Nodes */
+  .kg-node {
+    fill: var(--ink-mid);
+    stroke: none;
+    transition: fill 1s var(--ease-out), r 0.6s var(--ease-out), opacity 0.6s var(--ease-out);
+    cursor: default;
+  }
+  .kg-node.t-S { fill: #A5A5A2; }     /* Signal — default ink-mid */
+  .kg-node.t-E { fill: #FFFFFF; }     /* Entity — bright */
+  .kg-node.t-T { fill: #F0EFEC; }     /* Tool — slightly off-white */
+  .kg-node.t-A { fill: #FFFFFF; }     /* Agent — bright */
+  .kg-node.t-G { fill: #6A6A67; }     /* Gotcha — dim */
+  .kg-node.t-C { fill: #6A6A67; }     /* Capability — dim */
+  .kg-node.t-M, .kg-node.t-Q, .kg-node.t-D, .kg-node.t-R { fill: #6A6A67; }
+
+  .kg-node.is-focus {
+    fill: #FFFFFF;
+    filter: drop-shadow(0 0 6px rgba(255,255,255,0.5));
+  }
+  .kg-node.is-seed {
+    fill: #FFFFFF;
+    filter: drop-shadow(0 0 10px rgba(255,255,255,0.8));
+  }
+  .kg-node.is-dim { opacity: 0.08; }
+
+  /* Focus labels (HTML-positioned over SVG) */
+  .kg-label {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    color: var(--ink-hi);
+    background: rgba(10,10,10,0.85);
+    padding: 2px 6px;
+    border: 1px solid var(--rule-strong);
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.5s var(--ease-out);
+    z-index: 4;
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .kg-label.is-on { opacity: 1; }
+  .kg-label--seed {
+    background: #FFFFFF;
+    color: var(--plane);
+    border-color: var(--ink-hi);
+    font-weight: 500;
+  }
+
+  /* Legend column (right) */
+  .kg-legend {
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    gap: 20px;
+    align-content: start;
+  }
+  .legend-block {
+    border-left: 1px solid var(--rule);
+    padding: 0 0 0 16px;
+  }
+  .legend-block__title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    margin-bottom: 12px;
+  }
+  .legend-row {
+    display: grid;
+    grid-template-columns: 18px 1fr auto;
+    gap: 8px;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-mid);
+    margin-bottom: 6px;
+  }
+  .legend-row b { color: var(--ink-hi); font-weight: 500; }
+  .legend-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin: 0 auto;
+  }
+  .legend-dot.t-S { background: #A5A5A2; }
+  .legend-dot.t-E { background: #FFFFFF; }
+  .legend-dot.t-T { background: #F0EFEC; }
+  .legend-dot.t-A { background: #FFFFFF; box-shadow: 0 0 0 1.5px var(--ink-hi); }
+  .legend-dot.t-G { background: transparent; border: 1.2px solid #6A6A67; }
+  .legend-dot.t-C { background: transparent; border: 1.2px solid #6A6A67; }
+  .legend-dot.t-R { background: transparent; border: 1.2px dashed #6A6A67; }
+
+  .narration {
+    border-top: 1px solid var(--rule);
+    padding-top: 16px;
+    margin-top: auto;
+    font-family: var(--body);
+    font-weight: 300;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--ink);
+    min-height: 80px;
+    transition: color 0.4s var(--ease-out);
+  }
+  .narration__num {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-hi);
+    margin-bottom: 6px;
+    display: block;
+  }
+  .narration b { color: var(--ink-hi); font-weight: 500; }
+
+  /* FOOT */
+  .kg-foot {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 28px;
+    align-items: center;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+  }
+  .kg-foot__hint b { color: var(--ink-hi); font-weight: 500; }
+  .kg-foot__phase {
+    text-align: center;
+    color: var(--ink-hi);
+  }
+  .kg-foot__phase .total { color: var(--ink-low); }
+  .kg-foot__cap {
+    text-align: right;
+    font-family: var(--body);
+    font-weight: 300;
+    font-size: 12px;
+    color: var(--ink-mid);
+    text-transform: none;
+    letter-spacing: 0.04em;
+  }
+
+  /* Replay */
+  .kg-replay {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    z-index: 8;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-low);
+    padding: 8px 14px;
+    border: 1px solid var(--rule);
+    background: var(--plane);
+    cursor: pointer;
+    transition: color .2s, border-color .2s;
+  }
+  .kg-replay:hover { color: var(--ink-hi); border-color: var(--ink-hi); }
+  .kg-replay b { color: var(--ink-mid); font-weight: 500; margin-left: 8px; }
+  .kg-replay:hover b { color: var(--ink-hi); }
+
+  /* Live counter (top-left of canvas) */
+  .kg-counter {
+    position: absolute;
+    top: 12px;
+    left: 14px;
+    z-index: 5;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    line-height: 1.7;
+  }
+  .kg-counter b { color: var(--ink-hi); font-weight: 500; }
+
+  /* Demo pill */
+  .kg-pill {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    z-index: 5;
+    padding: 5px 9px;
+    border: 1px solid var(--rule-strong);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    background: var(--plane);
+  }
+  .kg-pill b { color: var(--ink-hi); font-weight: 500; }
+
+  /* Scenario selector */
+  .kg-scenarios {
+    position: absolute;
+    top: 42px;
+    right: 14px;
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-end;
+  }
+  .kg-scenarios__title {
+    font-family: var(--mono);
+    font-size: 8.5px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-low);
+    margin-bottom: 4px;
+  }
+  .kg-scenarios__chip {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    background: var(--plane);
+    padding: 6px 10px;
+    border: 1px solid var(--rule);
+    cursor: pointer;
+    transition: color .2s, border-color .2s, background .2s;
+    text-align: right;
+    min-width: 160px;
+  }
+  .kg-scenarios__chip:hover {
+    color: var(--ink-hi);
+    border-color: var(--ink-hi);
+  }
+  .kg-scenarios__chip.is-on {
+    color: var(--plane);
+    background: var(--ink-hi);
+    border-color: var(--ink-hi);
+  }
+  .kg-scenarios__chip small {
+    display: block;
+    margin-top: 2px;
+    font-size: 8px;
+    letter-spacing: 0.16em;
+    color: var(--ink-low);
+    text-transform: none;
+    font-family: var(--body);
+    font-weight: 300;
+  }
+  .kg-scenarios__chip.is-on small { color: rgba(10,10,10,0.55); }
+</style>
+</head>
+<body>
+<div class="kg-wrap">
+
+  <header class="kg-head">
+    <div class="kg-head__num">05 · v3 §8–9
+      <strong>Ontology &amp; semantic graph</strong>
+    </div>
+    <div>
+      <h1 class="kg-head__title">The cluster, <em>as the system sees it.</em></h1>
+      <p class="kg-head__sub">Real data — Vigil's signal knowledge graph. Every signal in Kubernetes, the tools that emit it, the entities it attaches to, the gotchas it carries, and the agents that own it.</p>
+    </div>
+    <div class="kg-head__meta">
+      <div>Vigil · <strong>v3</strong></div>
+      <div>scene <strong>05 / 05</strong></div>
+    </div>
+  </header>
+
+  <section class="kg-stage">
+
+    <div class="kg-canvas" id="canvas">
+      <div class="kg-pill">Demo · <b>real KG</b></div>
+      <div class="kg-counter" id="counter">loading…</div>
+
+      <div class="kg-scenarios" id="scenarios">
+        <div class="kg-scenarios__title">Focus scenario</div>
+        <!-- chips populated by JS once kg_layout.json loads -->
+      </div>
+
+      <div class="kg-canvas__inner" id="inner">
+        <svg id="svg" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid meet">
+          <g id="edges-g"></g>
+          <g id="nodes-g"></g>
+        </svg>
+      </div>
+
+      <!-- Focus labels live here; positioned via JS in canvas coords -->
+      <div id="labels"></div>
+
+      <button class="kg-replay" id="replay">replay <b>↻</b></button>
+    </div>
+
+    <aside class="kg-legend">
+      <div class="legend-block">
+        <div class="legend-block__title">By node type</div>
+        <div class="legend-row"><span class="legend-dot t-S"></span><span>Signal</span><b id="ct-S">—</b></div>
+        <div class="legend-row"><span class="legend-dot t-E"></span><span>Entity</span><b id="ct-E">—</b></div>
+        <div class="legend-row"><span class="legend-dot t-T"></span><span>Tool</span><b id="ct-T">—</b></div>
+        <div class="legend-row"><span class="legend-dot t-A"></span><span>Agent</span><b id="ct-A">—</b></div>
+        <div class="legend-row"><span class="legend-dot t-G"></span><span>Gotcha</span><b id="ct-G">—</b></div>
+        <div class="legend-row"><span class="legend-dot t-C"></span><span>Capability</span><b id="ct-C">—</b></div>
+        <div class="legend-row"><span class="legend-dot t-R"></span><span>Correlation</span><b id="ct-R">—</b></div>
+      </div>
+
+      <div class="legend-block">
+        <div class="legend-block__title">Schema</div>
+        <div class="legend-row" style="grid-template-columns:1fr;gap:2px;font-size:10px;line-height:1.6;">
+          <span><b id="st-nodes">—</b> &nbsp;canonical nodes</span>
+          <span><b id="st-edges">—</b> &nbsp;ontology edges</span>
+          <span><b id="st-version">—</b> &nbsp;schema version</span>
+        </div>
+      </div>
+
+      <div class="narration" id="narration">
+        <span class="narration__num">loading</span>
+        Computing layout…
+      </div>
+    </aside>
+
+  </section>
+
+  <footer class="kg-foot">
+    <div class="kg-foot__hint">
+      <b>SPACE</b> next phase · <b>R</b> replay · <b>F</b> fullscreen · auto-plays on load
+    </div>
+    <div class="kg-foot__phase">
+      Phase <span id="phase-label">00</span> <span class="total">/ 06</span>
+    </div>
+    <div class="kg-foot__cap">
+      Source · v3 ontology · type-A canonical signal KG · 12 edge types
+    </div>
+  </footer>
+
+</div>
+
+<script>
+  // ---------------------------------------------------------------------------
+  // Phases (driven by elapsed time or manual SPACE advance).
+  //   0 — title (idle)
+  //   1 — nodes drop in at scattered positions
+  //   2 — nodes ease to computed positions
+  //   3 — edges fade in (full graph visible)
+  //   4 — zoom into focus subgraph, dim everything else
+  //   5 — focus labels appear
+  //   6 — zoom back out, hold
+  // ---------------------------------------------------------------------------
+
+  const PHASES = [
+    { id: 0, ms: 600,   narr: ['00 · loading',     'Computing layout from the canonical KG…'] },
+    { id: 1, ms: 1400,  narr: ['01 · enumerate',   'Every signal, tool, entity, agent, gotcha and capability the system knows about — <b>842 nodes</b>.'] },
+    { id: 2, ms: 2400,  narr: ['02 · settle',      'Layout settles — semantically related nodes drift together. <b>The cluster has a shape</b>.'] },
+    { id: 3, ms: 2200,  narr: ['03 · edges',       '<b>3,709 edges</b> — emitted_by, attaches_to, has_gotcha, requires_capability, owned_by_agent…'] },
+    { id: 4, ms: 1800,  narr: ['04 · focus',       'A single failure mode in detail — <b>container_oom_events_total</b> and its 30-node neighbourhood.'] },
+    { id: 5, ms: 3200,  narr: ['05 · names',       'The neighbourhood is named, the relationships are explicit. <b>This is what an agent reasons over</b>.'] },
+    { id: 6, ms: 2200,  narr: ['06 · gestalt',     'The full graph again. Every Vigil insight stands on these edges.'] },
+  ];
+
+  let phase = 0;
+  let phaseStartedAt = 0;
+  let autoplay = true;
+  let DATA = null;
+  let RNG = mulberry32(123456);
+  let scenarioIx = 0;   // index into DATA.focus_options
+
+  function currentScenario() {
+    if (DATA && DATA.focus_options && DATA.focus_options.length) {
+      return DATA.focus_options[scenarioIx];
+    }
+    return DATA && DATA.focus;
+  }
+
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      let t = a;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function ease(u) { return u<0.5 ? 2*u*u : 1 - Math.pow(-2*u+2,2)/2; }
+  function lerp(a, b, u) { return a + (b - a) * u; }
+  function clamp(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); }
+
+  async function load() {
+    const res = await fetch('kg_layout.json');
+    DATA = await res.json();
+    document.getElementById('st-nodes').textContent = DATA.stats.nodes_total.toLocaleString();
+    document.getElementById('st-edges').textContent = DATA.stats.edges_total.toLocaleString();
+    document.getElementById('st-version').textContent = DATA.stats.schema_version;
+    for (const [t, c] of Object.entries(DATA.stats.by_type)) {
+      const code = {Signal:'S',Entity:'E',Tool:'T',Modality:'M',EquivalenceGroup:'Q',CapabilityPrereq:'C',DistroVersionGate:'D',Gotcha:'G',CorrelationGroup:'R',Agent:'A'}[t];
+      const el = document.getElementById('ct-' + code);
+      if (el) el.textContent = c.toLocaleString();
+    }
+    document.getElementById('counter').innerHTML = `<b>${DATA.stats.nodes_total.toLocaleString()}</b> nodes · <b>${DATA.stats.edges_total.toLocaleString()}</b> edges`;
+
+    renderScenarioChips();
+    buildSVG();
+    startTimeline();
+  }
+
+  function renderScenarioChips() {
+    const box = document.getElementById('scenarios');
+    const opts = (DATA && DATA.focus_options) || [];
+    if (!opts.length) { box.style.display = 'none'; return; }
+
+    // Remove any previously-rendered chips, keep the title
+    Array.from(box.querySelectorAll('.kg-scenarios__chip')).forEach(c => c.remove());
+    opts.forEach((opt, i) => {
+      const chip = document.createElement('button');
+      chip.className = 'kg-scenarios__chip' + (i === scenarioIx ? ' is-on' : '');
+      chip.innerHTML = `${opt.label}<small>${opt.sub}</small>`;
+      chip.addEventListener('click', () => selectScenario(i));
+      box.appendChild(chip);
+    });
+  }
+
+  function selectScenario(i) {
+    if (i === scenarioIx) return;
+    scenarioIx = i;
+    // Update chip styling
+    const chips = Array.from(document.querySelectorAll('.kg-scenarios__chip'));
+    chips.forEach((c, ix) => c.classList.toggle('is-on', ix === i));
+    // If we're past the edges phase, re-apply focus + labels for the new scenario
+    if (phase >= 4) {
+      // Clean current focus state then re-apply for the new scenario
+      hideFocusLabels();              // clears labels + zoom + focus classes
+      applyFocus();                    // refocus around new scenario
+      if (phase >= 5) showFocusLabels();
+    }
+    // Always update the narration to match
+    if (phase >= 4) {
+      const narr = document.getElementById('narration');
+      const sc = currentScenario();
+      const phaseTitle = PHASES[phase].narr[0];
+      narr.innerHTML = `<span class="narration__num">${phaseTitle}</span>${sc.narration}`;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Build SVG nodes + edges. We position in a [0..1000, 0..1000] coordinate space.
+  // ---------------------------------------------------------------------------
+  function buildSVG() {
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const W = 1000, H = 1000;
+    const PAD = 40;
+
+    // Compute scattered initial positions
+    DATA.nodes.forEach((n, i) => {
+      n.fx = PAD + n.x * (W - 2 * PAD);
+      n.fy = PAD + n.y * (H - 2 * PAD);
+      // Scatter point — random anywhere in canvas
+      n.sx = PAD + RNG() * (W - 2 * PAD);
+      n.sy = PAD + RNG() * (H - 2 * PAD);
+      // Current position starts as scattered
+      n.cx = n.sx;
+      n.cy = n.sy;
+    });
+
+    const focusSet = new Set(DATA.focus.node_ids);
+    const focusEdgeSet = new Set(DATA.focus.edge_ix);
+    const seedId = DATA.focus.seed_id;
+
+    // Render edges
+    const edgesG = document.getElementById('edges-g');
+    DATA.edges.forEach((e, i) => {
+      const line = document.createElementNS(SVG_NS, 'line');
+      line.setAttribute('x1', DATA.nodes[e.s].cx);
+      line.setAttribute('y1', DATA.nodes[e.s].cy);
+      line.setAttribute('x2', DATA.nodes[e.d].cx);
+      line.setAttribute('y2', DATA.nodes[e.d].cy);
+      line.setAttribute('class', 'kg-edge' + (focusEdgeSet.has(i) ? ' is-focus-pending' : ''));
+      line.dataset.s = e.s;
+      line.dataset.d = e.d;
+      line.dataset.ix = i;
+      edgesG.appendChild(line);
+      e._el = line;
+    });
+
+    // Render nodes
+    const nodesG = document.getElementById('nodes-g');
+    DATA.nodes.forEach((n, i) => {
+      const c = document.createElementNS(SVG_NS, 'circle');
+      c.setAttribute('cx', n.cx);
+      c.setAttribute('cy', n.cy);
+      // Bigger radius for high-degree/important node types
+      const r = (n.t === 'E' || n.t === 'A' || n.t === 'T') ? 3.2 : 1.8;
+      c.setAttribute('r', r);
+      c.setAttribute('class', 'kg-node t-' + n.t + (n.id === seedId ? ' is-seed-pending' : (focusSet.has(n.id) ? ' is-focus-pending' : '')));
+      c.dataset.id = n.id;
+      c.dataset.ix = i;
+      nodesG.appendChild(c);
+      n._el = c;
+      n._r = r;
+    });
+  }
+
+  function startTimeline() {
+    phase = 0;
+    phaseStartedAt = performance.now();
+    requestAnimationFrame(tick);
+  }
+
+  function setPhase(p) {
+    phase = p;
+    phaseStartedAt = performance.now();
+    document.getElementById('phase-label').textContent = String(p).padStart(2, '0');
+    const narr = document.getElementById('narration');
+    // For focus phases, prefer the scenario's narration over the generic phase narration.
+    const sc = currentScenario();
+    let body = PHASES[p].narr[1];
+    if ((p === 4 || p === 5) && sc) {
+      body = sc.narration;
+    }
+    narr.innerHTML = `<span class="narration__num">${PHASES[p].narr[0]}</span>${body}`;
+    if (p === 3) showAllEdges();
+    if (p === 4) applyFocus();
+    if (p === 5) showFocusLabels();
+    if (p === 6) hideFocusLabels();
+  }
+
+  function showAllEdges() {
+    DATA._edgesShown = true;
+    DATA.edges.forEach((e) => e._el.classList.add('is-on'));
+  }
+
+  function applyFocus() {
+    const sc = currentScenario();
+    const focusSet = new Set(sc.node_ids);
+    const focusEdgeSet = new Set(sc.edge_ix);
+    const seedId = sc.seed_id;
+
+    DATA.nodes.forEach((n) => {
+      n._el.classList.remove('is-focus-pending', 'is-seed-pending');
+      if (n.id === seedId) {
+        n._el.classList.add('is-seed');
+        n._el.setAttribute('r', '6');
+      } else if (focusSet.has(n.id)) {
+        n._el.classList.add('is-focus');
+        n._el.setAttribute('r', '4');
+      } else {
+        n._el.classList.add('is-dim');
+      }
+    });
+    DATA.edges.forEach((e, i) => {
+      if (focusEdgeSet.has(i)) {
+        e._el.classList.add('is-focus');
+      } else {
+        e._el.classList.add('is-dim');
+      }
+    });
+
+    // Zoom: compute centroid of focus nodes
+    let cx = 0, cy = 0, n = 0;
+    DATA.nodes.forEach((nd) => {
+      if (focusSet.has(nd.id)) { cx += nd.fx; cy += nd.fy; n++; }
+    });
+    cx /= n; cy /= n;
+    // We zoom by transforming the inner wrapper. Goal: put (cx, cy) at center of viewport.
+    const inner = document.getElementById('inner');
+    // SVG viewBox is 1000x1000, mapped to canvas dimensions.
+    // We want: scale by S, then translate so (cx, cy) lands at center.
+    // After scaling, the centre is at (canvas/2, canvas/2). We need to shift by (cx_center - cx) * S in CSS px.
+    // Easier: use CSS transform on the inner wrapper with --tx, --ty in canvas px.
+    const canvas = document.getElementById('canvas');
+    const rect = canvas.getBoundingClientRect();
+    // SVG coords scale to canvas. Map (cx, cy) in [0..1000] to canvas px.
+    const canvasW = rect.width, canvasH = rect.height;
+    // SVG preserves aspect ratio xMidYMid meet. So:
+    const svgScale = Math.min(canvasW, canvasH) / 1000;
+    const cx_px = canvasW / 2 + (cx - 500) * svgScale;
+    const cy_px = canvasH / 2 + (cy - 500) * svgScale;
+    // After scale(2.6), the wrapper's center stays at center. We want (cx_px, cy_px) to land at center.
+    // So pre-scale translate = (canvasW/2 - cx_px) / 2.6, ditto y.
+    const tx = (canvasW / 2 - cx_px) / 2.6;
+    const ty = (canvasH / 2 - cy_px) / 2.6;
+    inner.style.setProperty('--tx', tx + 'px');
+    inner.style.setProperty('--ty', ty + 'px');
+    inner.classList.add('is-zoomed');
+  }
+
+  function showFocusLabels() {
+    const sc = currentScenario();
+    const focusSet = new Set(sc.node_ids);
+    const seedId = sc.seed_id;
+    const labelsBox = document.getElementById('labels');
+    labelsBox.innerHTML = '';
+
+    const canvas = document.getElementById('canvas');
+    const rect = canvas.getBoundingClientRect();
+    const svgScale = Math.min(rect.width, rect.height) / 1000;
+    const cxOff = (rect.width  - 1000 * svgScale) / 2;
+    const cyOff = (rect.height - 1000 * svgScale) / 2;
+    const SCALE = 2.6;
+
+    // Get the current focus transform
+    const inner = document.getElementById('inner');
+    const txStr = inner.style.getPropertyValue('--tx');
+    const tyStr = inner.style.getPropertyValue('--ty');
+    const tx = parseFloat(txStr) || 0;
+    const ty = parseFloat(tyStr) || 0;
+
+    // For each focus node, place a label
+    DATA.nodes.forEach((n) => {
+      if (!focusSet.has(n.id)) return;
+      const sx = cxOff + n.fx * svgScale; // canvas-px before transform
+      const sy = cyOff + n.fy * svgScale;
+      // Apply scale around center, then translate
+      const px = rect.width / 2 + (sx - rect.width / 2) * SCALE + tx * SCALE;
+      const py = rect.height / 2 + (sy - rect.height / 2) * SCALE + ty * SCALE;
+      const lbl = document.createElement('div');
+      lbl.className = 'kg-label' + (n.id === seedId ? ' kg-label--seed' : '');
+      lbl.style.left = px + 'px';
+      lbl.style.top  = (py - 12) + 'px';
+      lbl.textContent = n.n;
+      labelsBox.appendChild(lbl);
+      // Stagger reveal
+      const delay = Math.random() * 800;
+      setTimeout(() => lbl.classList.add('is-on'), delay);
+    });
+  }
+
+  function hideFocusLabels() {
+    document.getElementById('labels').innerHTML = '';
+    // Also reset zoom
+    const inner = document.getElementById('inner');
+    inner.classList.remove('is-zoomed');
+    // Restore everyone
+    DATA.nodes.forEach((n) => {
+      n._el.classList.remove('is-dim', 'is-focus', 'is-seed');
+      n._el.setAttribute('r', n._r);
+    });
+    DATA.edges.forEach((e) => {
+      e._el.classList.remove('is-dim', 'is-focus');
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Per-frame tick
+  // ---------------------------------------------------------------------------
+  function tick(t) {
+    const elapsed = t - phaseStartedAt;
+    const cfg = PHASES[phase];
+    const u = clamp(elapsed / cfg.ms, 0, 1);
+
+    if (phase === 0) {
+      // Hide everything except counter
+      const eu = ease(u);
+      DATA.nodes.forEach((n) => n._el.setAttribute('opacity', 0));
+    } else if (phase === 1) {
+      // Nodes pop in at scattered positions
+      const eu = ease(u);
+      DATA.nodes.forEach((n, i) => {
+        const delay = (i / DATA.nodes.length) * 0.6;
+        const uu = clamp((u - delay) / (1 - delay), 0, 1);
+        n._el.setAttribute('opacity', ease(uu));
+      });
+    } else if (phase === 2) {
+      // Settle: lerp from scatter to final
+      const eu = ease(u);
+      DATA.nodes.forEach((n) => {
+        n.cx = lerp(n.sx, n.fx, eu);
+        n.cy = lerp(n.sy, n.fy, eu);
+        n._el.setAttribute('cx', n.cx);
+        n._el.setAttribute('cy', n.cy);
+      });
+      // Edges follow
+      DATA.edges.forEach((e) => {
+        e._el.setAttribute('x1', DATA.nodes[e.s].cx);
+        e._el.setAttribute('y1', DATA.nodes[e.s].cy);
+        e._el.setAttribute('x2', DATA.nodes[e.d].cx);
+        e._el.setAttribute('y2', DATA.nodes[e.d].cy);
+      });
+    } else if (phase === 3) {
+      // Edges fade in (use CSS transition; just toggle class)
+      if (u > 0.05 && !DATA._edgesShown) {
+        DATA._edgesShown = true;
+        DATA.edges.forEach((e) => e._el.classList.add('is-on'));
+      }
+    }
+    // phases 4, 5, 6 use CSS transitions, no per-frame work
+
+    if (autoplay && u >= 1 && phase < PHASES.length - 1) {
+      setPhase(phase + 1);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Controls
+  // ---------------------------------------------------------------------------
+  function replay() {
+    location.reload();
+  }
+  function manualNext() {
+    if (phase < PHASES.length - 1) {
+      autoplay = false;
+      setPhase(phase + 1);
+    }
+  }
+  document.getElementById('replay').addEventListener('click', replay);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'Enter') {
+      e.preventDefault();
+      manualNext();
+    } else if (e.key === 'r' || e.key === 'R') {
+      e.preventDefault();
+      replay();
+    } else if (e.key === 'f' || e.key === 'F') {
+      e.preventDefault();
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+      else document.exitFullscreen?.();
+    }
+  });
+
+  load();
+</script>
+
+</body>
+</html>

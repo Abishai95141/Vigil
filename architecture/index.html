@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vigil — Architecture diagrams</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  /* Allow page to scroll on the menu, even though scene pages don't */
+  html, body { overflow: auto !important; height: auto !important; min-height: 100vh; }
+
+  /* Compact the layout so all 6 tiles fit in a single viewport on most laptops */
+  .index-wrap { padding: 56px 64px 40px; gap: 32px; min-height: auto; }
+  .index-head__title { font-size: 72px; }
+  .index-head__sub { margin-top: 16px; font-size: 14px; }
+  .tiles { gap: 16px; }
+  .tile { min-height: 180px; padding: 26px 28px 22px; gap: 12px; }
+  .tile__title { font-size: 26px; }
+  .tile__desc { font-size: 12px; }
+
+  .index-foot {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    align-items: end;
+    padding-top: 28px;
+    border-top: 1px solid var(--rule);
+  }
+  .index-foot__keys {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    line-height: 2;
+  }
+  .index-foot__keys b { color: var(--ink-hi); font-weight: 500; }
+  .index-foot__brand {
+    text-align: right;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    line-height: 2;
+  }
+  .index-foot__brand strong { color: var(--ink-hi); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="index-wrap">
+
+  <header>
+    <div style="font-family:var(--mono);font-size:10px;letter-spacing:0.28em;text-transform:uppercase;color:var(--ink-mid);margin-bottom:18px;">
+      Vigil &nbsp;·&nbsp; v3 design &nbsp;·&nbsp; architecture diagrams
+    </div>
+    <h1 class="index-head__title">Architecture <em>at a glance.</em></h1>
+    <p class="index-head__sub">
+      Nine scenes. Each tells one story end-to-end. Open one fullscreen, press <b style="color:var(--ink-hi);font-weight:500;">space</b> to advance through the build-up, record it, move to the next. The cold open and KG render auto-play; the other seven are operator-paced.
+    </p>
+  </header>
+
+  <main class="tiles">
+
+    <a class="tile tile--featured" href="00_cold_open.html">
+      <div class="tile__num">00 · Cold open · motion</div>
+      <div>
+        <div class="tile__title">Six dashboards. Twelve alerts. <em>One evidence chain.</em></div>
+        <p class="tile__desc">Auto-playing 10-second motion graphic. Cluttered dashboards firing alerts collapse into a single Vigil evidence chain. Use as the video intro.</p>
+      </div>
+      <div class="tile__meta"><span>auto-play · loop · brand-faithful</span><b>~10 s</b></div>
+    </a>
+
+    <a class="tile tile--featured" href="problem.html">
+      <div class="tile__num">00B · Problem statement</div>
+      <div>
+        <div class="tile__title">Kubernetes is <em>observable.</em> It isn't <em>interpreted.</em></div>
+        <p class="tile__desc">Asymmetry between abundant telemetry (589 signals · 47 entities · 3,709 edges) and scarce interpretation (one on-call, six dashboards, zero correlation tools). Three operator questions no dashboard answers.</p>
+      </div>
+      <div class="tile__meta"><span>v3 §2 · structural problem</span><b>5 steps</b></div>
+    </a>
+
+    <a class="tile tile--featured" href="05_kg.html">
+      <div class="tile__num">05 · Knowledge graph · live data</div>
+      <div>
+        <div class="tile__title">The cluster, <em>as the system sees it.</em></div>
+        <p class="tile__desc">Real KG. 842 nodes / 3,709 edges — every signal, tool, entity, agent, gotcha and capability. Settles, edges draw in, then zooms into a 30-node focus subgraph.</p>
+      </div>
+      <div class="tile__meta"><span>v3 §8–9 · ontology &amp; semantic graph</span><b>6 phases</b></div>
+    </a>
+
+    <a class="tile" href="01_system.html">
+      <div class="tile__num">01 · The system</div>
+      <div>
+        <div class="tile__title">Six layers, <em>cluster to operator.</em></div>
+        <p class="tile__desc">From raw cluster telemetry to the operator surface — every layer built up one at a time. Ends with the context + annotation cross-cuts overlaid.</p>
+      </div>
+      <div class="tile__meta"><span>v3 §4 · architecture overview</span><b>8 steps</b></div>
+    </a>
+
+    <a class="tile" href="02_binding.html">
+      <div class="tile__num">02 · Binding cascade</div>
+      <div>
+        <div class="tile__title">An unknown observable, <em>resolved.</em></div>
+        <p class="tile__desc">Tier 1 catalog → Tier 2 OTel → Tier 3 embedding → Tier 4 fingerprint veto → Tier 5 LLM → operator review. Each tier more expensive, less deterministic.</p>
+      </div>
+      <div class="tile__meta"><span>v3 §7 · binding subsystem</span><b>7 steps</b></div>
+    </a>
+
+    <a class="tile" href="03_reasoning.html">
+      <div class="tile__num">03 · Reasoning fan-out</div>
+      <div>
+        <div class="tile__title">Three reasoning paths, <em>one synthesis.</em></div>
+        <p class="tile__desc">Evidence fans into deterministic detection, the exploratory agent, and master-agent synthesis. The exploratory path is what makes us no longer blind to unknown failure modes.</p>
+      </div>
+      <div class="tile__meta"><span>v3 §15–18 · reasoning stack</span><b>6 steps</b></div>
+    </a>
+
+    <a class="tile" href="04_evidence.html">
+      <div class="tile__num">04 · Evidence chain</div>
+      <div>
+        <div class="tile__title">Claim, reasoning, observation, <em>raw.</em></div>
+        <p class="tile__desc">Every insight drills down four levels — claim, reasoning, agent observation, raw observation. The operator can always reach the bytes that justify the call.</p>
+      </div>
+      <div class="tile__meta"><span>v3 §23 · evidence linking</span><b>4 steps</b></div>
+    </a>
+
+    <a class="tile" href="06_identity.html">
+      <div class="tile__num">06 · Two-tier identity</div>
+      <div>
+        <div class="tile__title">The pod restarts. <em>The identity doesn't.</em></div>
+        <p class="tile__desc">Four PodInstances across five hours, one stable PodRole. Why "show me cascade events this week" works at all — instance UIDs change, logical identity persists.</p>
+      </div>
+      <div class="tile__meta"><span>v3 §9 · two-layer identity</span><b>7 steps</b></div>
+    </a>
+
+    <a class="tile" href="feasibility.html">
+      <div class="tile__num">07 · Feasibility</div>
+      <div>
+        <div class="tile__title">Built for the clusters <em>that don't have SREs.</em></div>
+        <p class="tile__desc">Four commitments — footprint, cost, honest coverage, operator authority. Every number traced to a v3 design section. Includes deployment topology (SaaS · on-prem · air-gap roadmap).</p>
+      </div>
+      <div class="tile__meta"><span>v3 §2 · §5 · §6 · §22</span><b>5 steps</b></div>
+    </a>
+
+  </main>
+
+  <footer class="index-foot">
+    <div class="index-foot__keys">
+      <div><b>SPACE / →</b> &nbsp;advance &nbsp; · &nbsp; <b>←</b> &nbsp;back &nbsp; · &nbsp; <b>R</b> &nbsp;reset</div>
+      <div><b>E</b> &nbsp;jump to end &nbsp; · &nbsp; <b>F</b> &nbsp;fullscreen &nbsp; · &nbsp; <b>click</b> &nbsp;advance</div>
+    </div>
+    <div class="index-foot__brand">
+      <div>Vigil · Kubernetes AI observability</div>
+      <div>v3 design · <strong>presentation build</strong></div>
+    </div>
+  </footer>
+
+</div>
+</body>
+</html>

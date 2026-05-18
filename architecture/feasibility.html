@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Feasibility · Vigil</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  .stage {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 18px;
+    min-height: 0;
+  }
+
+  /* ---------- Row A: hero claim ---------- */
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 28px;
+    align-items: end;
+    padding: 12px 28px 18px;
+    border-bottom: 1px solid var(--rule);
+    opacity: 0.25;
+    transition: opacity var(--dur) var(--ease-out);
+  }
+  .hero.is-on { opacity: 1; }
+  .hero__line {
+    font-family: var(--display);
+    font-size: 30px;
+    font-weight: 600;
+    color: var(--ink-hi);
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+    max-width: 720px;
+  }
+  .hero__line em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-mid);
+    letter-spacing: -0.005em;
+  }
+  .hero__sub {
+    margin-top: 8px;
+    font-family: var(--body);
+    font-weight: 300;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ink-mid);
+    max-width: 680px;
+  }
+  .hero__rhs {
+    text-align: right;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    line-height: 1.85;
+  }
+  .hero__rhs b { color: var(--ink-hi); font-weight: 500; }
+
+  /* ---------- Row B: 4 pillar cards (2x2) ---------- */
+  .pillars {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 16px;
+    min-height: 0;
+  }
+  .pillar {
+    position: relative;
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    padding: 20px 22px 18px;
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    gap: 10px;
+    min-height: 0;
+    opacity: 0.22;
+    transition:
+      opacity var(--dur) var(--ease-out),
+      border-color var(--dur) var(--ease-out),
+      background var(--dur) var(--ease-out);
+  }
+  .pillar.is-on { opacity: 1; border-color: var(--ink-hi); background: var(--surface-2); }
+
+  /* Section pip on top-left */
+  .pillar__pip {
+    position: absolute;
+    top: -10px;
+    left: 18px;
+    background: var(--plane);
+    padding: 0 9px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-low);
+    transition: color var(--dur) var(--ease-out);
+  }
+  .pillar.is-on .pillar__pip { color: var(--ink-hi); }
+
+  .pillar__head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: baseline;
+  }
+  .pillar__name {
+    font-family: var(--display);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--ink-hi);
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  .pillar__name em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-mid);
+    font-size: 12px;
+  }
+  .pillar__role {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+  }
+
+  .pillar__claim {
+    font-family: var(--display);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink-hi);
+    letter-spacing: -0.01em;
+    line-height: 1.4;
+  }
+  .pillar__claim em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-mid);
+  }
+
+  .pillar__rows {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 7px 16px;
+    align-items: baseline;
+    align-content: start;
+    margin-top: 4px;
+  }
+  .pillar__num {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink-hi);
+    letter-spacing: -0.025em;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .pillar__num--small { font-size: 16px; font-weight: 600; }
+  .pillar__lbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    line-height: 1.45;
+  }
+  .pillar__lbl b { color: var(--ink-hi); font-weight: 500; }
+  .pillar__lbl em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-low);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .pillar__foot {
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--body);
+    font-weight: 300;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--ink-mid);
+  }
+  .pillar__foot b { color: var(--ink-hi); font-weight: 500; }
+
+  /* Different fills for the 4 pillars */
+  .pillar--cost.is-on {
+    background-image:
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.03) 0 6px, transparent 6px 12px);
+  }
+  .pillar--honest.is-on {
+    background-image:
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.03) 0 6px, transparent 6px 12px);
+  }
+
+  /* ---------- Row C: deployment topology footer ---------- */
+  .topo {
+    display: grid;
+    grid-template-columns: 220px 1fr auto;
+    gap: 24px;
+    align-items: center;
+    padding: 14px 20px 14px;
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    opacity: 0.25;
+    transition: opacity var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
+  }
+  .topo.is-on { opacity: 1; border-color: var(--ink-hi); background: var(--surface-2); }
+  .topo__head {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .topo__role {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+  }
+  .topo.is-on .topo__role { color: var(--ink-hi); }
+  .topo__name {
+    font-family: var(--display);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink-hi);
+    letter-spacing: -0.015em;
+    line-height: 1.1;
+  }
+  .topo__name em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-mid);
+    font-size: 11.5px;
+  }
+  .topo__chips {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .tchip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border: 1px solid var(--rule-strong);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink);
+    background: var(--plane);
+  }
+  .tchip b { color: var(--ink-hi); font-weight: 500; }
+  .tchip__dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--ink-hi);
+  }
+  .tchip--soon .tchip__dot {
+    background: transparent;
+    border: 1.4px solid var(--ink-hi);
+  }
+  .tchip--soon { color: var(--ink-mid); }
+  .topo__seal {
+    text-align: right;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    line-height: 1.85;
+  }
+  .topo__seal b { color: var(--ink-hi); font-weight: 500; }
+</style>
+</head>
+<body data-step="0">
+<div class="frame">
+
+  <header class="frame__head">
+    <div class="head__num">07 · v3 §2 §5 §6
+      <strong>Feasibility</strong>
+    </div>
+    <div>
+      <h1 class="head__title">Built for the clusters <em>that don't have SREs.</em></h1>
+      <p class="head__sub">Bounded, honest, deployable. Designed to run on the edge box, cost a token budget you can defend, fail loudly when it can't see, and never reach into the cluster on its own.</p>
+    </div>
+    <div class="head__meta">
+      <div>Vigil · <strong>v3</strong></div>
+      <div>scene <strong>07 / feasibility</strong></div>
+    </div>
+  </header>
+
+  <section class="frame__stage">
+    <div class="demo-pill">Source · <b>v3 design commitments</b></div>
+
+    <div class="stage">
+
+      <!-- Row A: hero -->
+      <div class="hero" data-reveal="1">
+        <div>
+          <div class="hero__line">Four commitments. <em>Every one is a load-bearing line in the design doc.</em></div>
+          <div class="hero__sub">Feasibility isn't a slide we added at the end — it's the constraint each component was shaped under. The agent self-polices. The LLM is rationed. Coverage is honest. The operator owns the action.</div>
+        </div>
+        <div class="hero__rhs">
+          <div>v3 §5 · <b>design commitments</b></div>
+          <div>v3 §6 · <b>customer-side agent</b></div>
+          <div>v3 §22 · <b>capability degradation</b></div>
+          <div>v3 §19 · <b>causal seam</b></div>
+        </div>
+      </div>
+
+      <!-- Row B: 4 pillars (2x2) -->
+      <div class="pillars">
+
+        <!-- Pillar 1 — FOOTPRINT -->
+        <div class="pillar pillar--footprint" data-reveal="2">
+          <div class="pillar__pip">v3 §6</div>
+          <div class="pillar__head">
+            <div class="pillar__name">Runs where SREs<br/><em>don't.</em></div>
+            <div class="pillar__role">footprint</div>
+          </div>
+          <div class="pillar__claim">Customer-side agent is <em>small, read-only, and self-policing.</em></div>
+          <div class="pillar__rows">
+            <span class="pillar__num">&lt;100 <span style="font-size:14px;color:var(--ink-mid);">MB</span></span>
+            <span class="pillar__lbl">RAM target on customer side<br/><em>cgroup-limited; hard cap</em></span>
+
+            <span class="pillar__num">&lt;1 <span style="font-size:14px;color:var(--ink-mid);">core</span></span>
+            <span class="pillar__lbl">CPU sustained · backs off when <b>host is under pressure</b></span>
+
+            <span class="pillar__num pillar__num--small">read-only</span>
+            <span class="pillar__lbl">Agent never writes to the cluster API · never restarts a workload</span>
+
+            <span class="pillar__num pillar__num--small">single-node OK</span>
+            <span class="pillar__lbl">Designed for lightweight K8s · edge &amp; industrial · 1–3 nodes typical</span>
+          </div>
+          <div class="pillar__foot">
+            If the workload needs more, the agent <b>gives ground</b> — scrape frequency drops before the workload notices.
+          </div>
+        </div>
+
+        <!-- Pillar 2 — COST / LLM BOUNDED -->
+        <div class="pillar pillar--cost" data-reveal="3">
+          <div class="pillar__pip">v3 §5 · §7 · §16 · §17 · §18</div>
+          <div class="pillar__head">
+            <div class="pillar__name">LLM use is<br/><em>rationed, not ambient.</em></div>
+            <div class="pillar__role">cost</div>
+          </div>
+          <div class="pillar__claim">Five specific call sites. <em>Zero in the hot path.</em></div>
+          <div class="pillar__rows">
+            <span class="pillar__num">0</span>
+            <span class="pillar__lbl">LLM calls in detection · binding hot path · KG construction</span>
+
+            <span class="pillar__num pillar__num--small">1 / pattern</span>
+            <span class="pillar__lbl">T5 binding · <b>cached forever</b> · cost scales with schema churn, not traffic</span>
+
+            <span class="pillar__num pillar__num--small">1 / fire</span>
+            <span class="pillar__lbl">Interpreter narration when a playbook matches · ~400 tok / insight</span>
+
+            <span class="pillar__num pillar__num--small">windowed</span>
+            <span class="pillar__lbl">Exploratory + master agent · <b>budget-bounded</b>, only when needed</span>
+          </div>
+          <div class="pillar__foot">
+            Token spend is <b>predictable per cluster</b> — proportional to <em>novelty</em>, not to observation volume.
+          </div>
+        </div>
+
+        <!-- Pillar 3 — HONEST -->
+        <div class="pillar pillar--honest" data-reveal="4">
+          <div class="pillar__pip">v3 §22 · §7</div>
+          <div class="pillar__head">
+            <div class="pillar__name">Fails loudly,<br/><em>not silently.</em></div>
+            <div class="pillar__role">honest coverage</div>
+          </div>
+          <div class="pillar__claim">Every missing signal is named — the system tells you what it <em>can't see.</em></div>
+          <div class="pillar__rows">
+            <span class="pillar__num pillar__num--small">per-playbook</span>
+            <span class="pillar__lbl">Capability degradation report · <b>fully_active · degraded · disabled</b></span>
+
+            <span class="pillar__num pillar__num--small">confidence</span>
+            <span class="pillar__lbl">Every binding carries a tier — <b>high · medium · low</b> · with provenance</span>
+
+            <span class="pillar__num pillar__num--small">no claim</span>
+            <span class="pillar__lbl">Beyond what the playbook signature explicitly supports · §19 causal seam</span>
+
+            <span class="pillar__num pillar__num--small">candidate</span>
+            <span class="pillar__lbl">Exploratory hypotheses marked for <b>library review</b> — never silently promoted</span>
+          </div>
+          <div class="pillar__foot">
+            Coverage starts narrow and grows. The operator always knows what is <b>active, degraded, and why</b>.
+          </div>
+        </div>
+
+        <!-- Pillar 4 — OPERATOR AUTHORITY -->
+        <div class="pillar pillar--operator" data-reveal="5">
+          <div class="pillar__pip">v3 §5 · §19 · §23</div>
+          <div class="pillar__head">
+            <div class="pillar__name">Surface,<br/><em>do not act.</em></div>
+            <div class="pillar__role">operator authority</div>
+          </div>
+          <div class="pillar__claim">No auto-remediation. <em>No causal claim the playbook can't back.</em> The operator owns every action.</div>
+          <div class="pillar__rows">
+            <span class="pillar__num pillar__num--small">no auto-act</span>
+            <span class="pillar__lbl">System never restarts, scales, evicts, or applies anything to the cluster</span>
+
+            <span class="pillar__num pillar__num--small">drill-down</span>
+            <span class="pillar__lbl">Every claim links 4 levels deep to the <b>bytes that justify it</b> · §23</span>
+
+            <span class="pillar__num pillar__num--small">escalate</span>
+            <span class="pillar__lbl">Ambiguous incidents route to operator — <b>master agent waits</b> on the choice</span>
+
+            <span class="pillar__num pillar__num--small">annotate</span>
+            <span class="pillar__lbl">Operator feedback is first-class · feeds back into pattern library</span>
+          </div>
+          <div class="pillar__foot">
+            The system makes the operator <b>faster and better-grounded</b> — it never replaces their judgment.
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Row C: deployment topology -->
+      <div class="topo" data-reveal="5">
+        <div class="topo__head">
+          <div class="topo__role">deployment topology</div>
+          <div class="topo__name">Where it can <em>actually run.</em></div>
+        </div>
+        <div class="topo__chips">
+          <div class="tchip"><span class="tchip__dot"></span><b>SaaS</b> backend</div>
+          <div class="tchip"><span class="tchip__dot"></span><b>On-prem</b> backend</div>
+          <div class="tchip tchip--soon"><span class="tchip__dot"></span><b>Air-gapped</b> · roadmap</div>
+          <div class="tchip"><span class="tchip__dot"></span><b>Customer toggles</b> per namespace · per stream</div>
+          <div class="tchip"><span class="tchip__dot"></span><b>Read-only</b> on cluster API</div>
+        </div>
+        <div class="topo__seal">
+          <div><b>Data residency:</b> strict</div>
+          <div><b>Egress:</b> only what the customer configures</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="frame__foot">
+    <div class="foot__hint">
+      <b>SPACE</b> advance · <b>←</b> back · <b>R</b> reset · <b>F</b> fullscreen
+    </div>
+    <div class="foot__step">
+      Step <span data-step-label>00</span> <span class="total">/ <span data-step-total>05</span></span>
+    </div>
+    <div class="foot__caption">
+      All numbers and commitments traced to v3 design sections — not invented for the deck.
+    </div>
+  </footer>
+
+</div>
+
+<script>window.TOTAL_STEPS = 5;</script>
+<script src="shared.js"></script>
+</body>
+</html>

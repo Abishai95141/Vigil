@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>02 — Binding cascade · Vigil</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  .stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-columns: 280px 1fr 320px;
+    gap: 24px;
+    min-height: 0;
+  }
+  .col { position: relative; min-height: 0; overflow: hidden; }
+
+  /* ---------- LEFT: observable card ---------- */
+  .obs-card {
+    border: 1px solid var(--rule-strong);
+    background: var(--surface);
+    padding: 22px;
+    transition: border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
+  }
+  .obs-card.is-on { border-color: var(--ink-hi); background: var(--surface-2); }
+  .obs-card__role {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    margin-bottom: 14px;
+  }
+  .obs-card.is-on .obs-card__role { color: var(--ink-hi); }
+  .obs-card__name {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink-hi);
+    word-break: break-all;
+    margin-bottom: 18px;
+    line-height: 1.45;
+  }
+  .obs-card__row {
+    display: grid;
+    grid-template-columns: 78px 1fr;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    line-height: 1.55;
+    color: var(--ink-mid);
+    margin-bottom: 6px;
+  }
+  .obs-card__row b { color: var(--ink); font-weight: 500; }
+  .obs-card__key { color: var(--ink-low); letter-spacing: 0.15em; text-transform: uppercase; font-size: 9.5px; }
+
+  .cost-axis {
+    margin-top: 22px;
+    padding: 14px 18px;
+    border: 1px dashed var(--rule);
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    line-height: 1.7;
+    background-image:
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.02) 0 6px, transparent 6px 12px);
+  }
+  .cost-axis b { color: var(--ink-hi); font-weight: 500; }
+
+  /* ---------- CENTER: tier cascade ---------- */
+  .cascade {
+    display: grid;
+    grid-template-rows: repeat(6, 1fr);
+    gap: 10px;
+    height: 100%;
+    min-height: 0;
+  }
+  .tier {
+    position: relative;
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    padding: 12px 18px 13px;
+    display: grid;
+    grid-template-columns: 24px 1fr auto;
+    gap: 16px;
+    align-items: center;
+    transition:
+      border-color var(--dur) var(--ease-out),
+      color var(--dur) var(--ease-out),
+      background var(--dur) var(--ease-out);
+  }
+  .tier.is-on { border-color: var(--ink-hi); background: var(--surface-2); }
+  .tier.is-active {
+    border-color: var(--ink-hi);
+    background: var(--surface-2);
+    box-shadow: inset 4px 0 0 var(--ink-hi);
+  }
+  .tier__num {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--ink-low);
+    text-align: center;
+    transition: color var(--dur) var(--ease-out);
+  }
+  .tier.is-on .tier__num { color: var(--ink-hi); }
+  .tier__main { min-width: 0; }
+  .tier__name {
+    font-family: var(--display);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink-mid);
+    line-height: 1.2;
+    transition: color var(--dur) var(--ease-out);
+  }
+  .tier.is-on .tier__name { color: var(--ink-hi); }
+  .tier__mode {
+    margin-top: 3px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    transition: color var(--dur) var(--ease-out);
+  }
+  .tier.is-on .tier__mode { color: var(--ink-mid); }
+  .tier__desc {
+    margin-top: 5px;
+    font-family: var(--body);
+    font-weight: 300;
+    font-size: 11.5px;
+    line-height: 1.4;
+    color: var(--ink-low);
+    transition: color var(--dur) var(--ease-out);
+    max-width: 520px;
+  }
+  .tier.is-on .tier__desc { color: var(--ink-mid); }
+
+  .verdict {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    padding: 6px 11px;
+    border: 1px solid var(--rule);
+    color: var(--ink-low);
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateX(8px);
+    transition:
+      opacity var(--dur) var(--ease-out),
+      transform var(--dur) var(--ease-out),
+      color var(--dur) var(--ease-out),
+      border-color var(--dur) var(--ease-out),
+      background var(--dur) var(--ease-out);
+  }
+  .tier.is-on .verdict { opacity: 1; transform: translateX(0); }
+  .verdict--pass    { color: var(--ink); border-color: var(--rule-strong); }
+  .verdict--below   { color: var(--ink-hi); border-color: var(--ink-hi); background-image:
+    repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 6px, transparent 6px 12px); }
+  .verdict--veto    { color: var(--ink-hi); border-color: var(--ink-hi); }
+  .verdict--proposal{ color: var(--ink-hi); border-color: var(--ink-hi); background-image:
+    repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 6px, transparent 6px 12px); }
+  .verdict--confirm { color: var(--plane); background: var(--ink-hi); border-color: var(--ink-hi); }
+
+  .tier__connector {
+    position: absolute;
+    bottom: -10px;
+    left: 36px;
+    width: 1px;
+    height: 10px;
+    background: var(--rule);
+    transition: background var(--dur) var(--ease-out);
+  }
+  .tier.is-on .tier__connector { background: var(--ink-hi); }
+  .tier:last-child .tier__connector { display: none; }
+
+  /* ---------- RIGHT: binding record ---------- */
+  .record {
+    border: 1px solid var(--rule-strong);
+    background: var(--surface);
+    padding: 22px;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: border-color var(--dur) var(--ease-out);
+  }
+  body[data-step="7"] .record { border-color: var(--ink-hi); }
+  .record__role {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    margin-bottom: 14px;
+  }
+  .record__title {
+    font-family: var(--display);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink-hi);
+    margin-bottom: 16px;
+    letter-spacing: -0.01em;
+  }
+  .record__body {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.65;
+    color: var(--ink);
+    flex: 1;
+    overflow: auto;
+  }
+  .field {
+    display: grid;
+    grid-template-columns: 1fr;
+    margin-bottom: 8px;
+    opacity: 0;
+    transition: opacity var(--dur) var(--ease-out);
+  }
+  .field.is-on { opacity: 1; }
+  .field__key {
+    color: var(--ink-low);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+  .field__val {
+    color: var(--ink);
+    word-break: break-all;
+  }
+  .field__val--hi { color: var(--ink-hi); }
+  .field__val--warn {
+    background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 4px, transparent 4px 8px);
+    padding: 2px 6px;
+    display: inline-block;
+  }
+  .prov-list { display: flex; flex-direction: column; gap: 3px; margin-top: 2px; }
+  .prov {
+    display: grid;
+    grid-template-columns: 24px 1fr;
+    gap: 8px;
+    font-size: 10.5px;
+    color: var(--ink-mid);
+    opacity: 0;
+    transition: opacity var(--dur) var(--ease-out);
+  }
+  .prov.is-on { opacity: 1; }
+  .prov b { color: var(--ink-hi); font-weight: 500; }
+  .prov .num { color: var(--ink-low); }
+
+  .record__final {
+    margin-top: 18px;
+    padding: 16px;
+    border: 1px dashed var(--rule);
+    opacity: 0;
+    transition: opacity var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
+  }
+  body[data-step="7"] .record__final { opacity: 1; border-color: var(--ink-hi); }
+  .record__final-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-hi);
+    margin-bottom: 10px;
+  }
+  .record__final-body {
+    font-family: var(--body);
+    font-weight: 300;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--ink);
+  }
+  .record__final-body b { color: var(--ink-hi); font-weight: 500; }
+</style>
+</head>
+<body data-step="0">
+<div class="frame">
+
+  <header class="frame__head">
+    <div class="head__num">02 · v3 §7
+      <strong>Binding subsystem</strong>
+    </div>
+    <div>
+      <h1 class="head__title">An unknown observable, <em>resolved.</em></h1>
+      <p class="head__sub">Customer schemas vary. The cascade resolves them at discovery time — cheapest tier first, most expensive last. The hot path is always a deterministic lookup against the result.</p>
+    </div>
+    <div class="head__meta">
+      <div>Vigil · <strong>v3</strong></div>
+      <div>scene <strong>02 / 04</strong></div>
+    </div>
+  </header>
+
+  <section class="frame__stage">
+    <div class="demo-pill">Demo · <b>scenario</b></div>
+
+    <div class="stage">
+
+      <!-- LEFT: observable card + cost axis -->
+      <div class="col">
+        <div class="obs-card" data-reveal="1">
+          <div class="obs-card__role">Unbound observable</div>
+          <div class="obs-card__name">app_grpc_request_<wbr/>duration_seconds</div>
+          <div class="obs-card__row"><span class="obs-card__key">kind</span><b>metric · histogram</b></div>
+          <div class="obs-card__row"><span class="obs-card__key">labels</span><b>service, method, code</b></div>
+          <div class="obs-card__row"><span class="obs-card__key">source</span><b>customer scrape</b></div>
+          <div class="obs-card__row"><span class="obs-card__key">sample</span><b>buckets[0.005…10]</b></div>
+        </div>
+
+        <div class="cost-axis">
+          <div>cost ↓</div>
+          <div>non-determinism ↓</div>
+          <div style="margin-top:8px;color:var(--ink-low);text-transform:none;letter-spacing:0;font-family:var(--body);font-weight:300;font-size:11px;line-height:1.5;">
+            Each tier is more expensive and less deterministic than the previous. Most observables terminate at <b style="color:var(--ink-hi);font-weight:500;">T1</b>; the long tail flows down.
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTER: tier cascade -->
+      <div class="col">
+        <div class="cascade">
+
+          <div class="tier" data-reveal="2">
+            <div class="tier__num">T1</div>
+            <div class="tier__main">
+              <div class="tier__name">Known-exporter catalog</div>
+              <div class="tier__mode">Deterministic lookup · shipped &amp; versioned</div>
+              <div class="tier__desc">cAdvisor · kube-state-metrics · kubelet · node_exporter · standard sidecars. 60–80% of bindings terminate here.</div>
+            </div>
+            <div class="verdict verdict--pass">No match · pass</div>
+            <div class="tier__connector"></div>
+          </div>
+
+          <div class="tier" data-reveal="3">
+            <div class="tier__num">T2</div>
+            <div class="tier__main">
+              <div class="tier__name">OTel semantic conventions</div>
+              <div class="tier__mode">Deterministic lookup · resource attrs + metric names</div>
+              <div class="tier__desc">Close cousin <code style="font-family:var(--mono);color:var(--ink-hi);">rpc.server.duration</code> exists in the catalog — names don't match exactly.</div>
+            </div>
+            <div class="verdict verdict--pass">No match · pass</div>
+            <div class="tier__connector"></div>
+          </div>
+
+          <div class="tier" data-reveal="4">
+            <div class="tier__num">T3</div>
+            <div class="tier__main">
+              <div class="tier__name">Embedding similarity ranking</div>
+              <div class="tier__mode">Ranking · auto-bind ≥ 0.85</div>
+              <div class="tier__desc">Encode name + help + label keys; rank against all ontology variables. Top candidate <code style="font-family:var(--mono);color:var(--ink-hi);">var_rpc_server_duration</code> at 0.79.</div>
+            </div>
+            <div class="verdict verdict--below">0.79 &lt; 0.85 · pass</div>
+            <div class="tier__connector"></div>
+          </div>
+
+          <div class="tier" data-reveal="5">
+            <div class="tier__num">T4</div>
+            <div class="tier__main">
+              <div class="tier__name">Behavioral fingerprinting</div>
+              <div class="tier__mode">Veto only · 5-minute warm-up</div>
+              <div class="tier__desc">Observe structure: histogram bucket monotonicity, label cardinality, sample rate. Confirms one T3 candidate; falsifies two.</div>
+            </div>
+            <div class="verdict verdict--veto">1 of 3 confirmed</div>
+            <div class="tier__connector"></div>
+          </div>
+
+          <div class="tier" data-reveal="6">
+            <div class="tier__num">T5</div>
+            <div class="tier__main">
+              <div class="tier__name">LLM disambiguation</div>
+              <div class="tier__mode">Proposal · one call per novel pattern · cached forever</div>
+              <div class="tier__desc">Structured selection across the surviving candidate(s). Output treated as a proposal at medium confidence — requires operator confirmation.</div>
+            </div>
+            <div class="verdict verdict--proposal">Proposal · medium</div>
+            <div class="tier__connector"></div>
+          </div>
+
+          <div class="tier" data-reveal="7">
+            <div class="tier__num">OP</div>
+            <div class="tier__main">
+              <div class="tier__name">Operator review</div>
+              <div class="tier__mode">Decision · confirm · edit · reject</div>
+              <div class="tier__desc">Operator confirms the proposal. Binding is lifted to high confidence. Capability degradation report removes the dependent playbook from the degraded list.</div>
+            </div>
+            <div class="verdict verdict--confirm">Confirmed · bound</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- RIGHT: BindingRecord -->
+      <div class="col">
+        <div class="record">
+          <div class="record__role">Binding record</div>
+          <div class="record__title">BindingRecord · live</div>
+
+          <div class="record__body">
+            <div class="field" data-reveal="1">
+              <span class="field__key">observable_signature</span>
+              <span class="field__val">sha:7c4a…f201</span>
+            </div>
+            <div class="field" data-reveal="1">
+              <span class="field__key">observable_kind</span>
+              <span class="field__val">metric · histogram</span>
+            </div>
+            <div class="field" data-reveal="1">
+              <span class="field__key">binding_state</span>
+              <span class="field__val field__val--warn">unresolved</span>
+            </div>
+
+            <div class="field" data-reveal="2" style="margin-top:14px;">
+              <span class="field__key">provenance trail</span>
+            </div>
+            <div class="prov-list">
+              <div class="prov" data-reveal="2"><span class="num">T1</span><span>catalog · <b>no match</b></span></div>
+              <div class="prov" data-reveal="3"><span class="num">T2</span><span>otel · <b>no match</b></span></div>
+              <div class="prov" data-reveal="4"><span class="num">T3</span><span>embedding · top 0.79 · <b>&lt; 0.85</b></span></div>
+              <div class="prov" data-reveal="5"><span class="num">T4</span><span>fingerprint · <b>1 of 3 confirmed</b></span></div>
+              <div class="prov" data-reveal="6"><span class="num">T5</span><span>llm · proposal <b>var_rpc_server_duration_seconds</b> @ medium</span></div>
+              <div class="prov" data-reveal="7"><span class="num">OP</span><span>operator · <b>confirmed</b> @ 14:02:11</span></div>
+            </div>
+
+            <div class="field" data-reveal="7" style="margin-top:14px;">
+              <span class="field__key">canonical_variable_id</span>
+              <span class="field__val field__val--hi">var_rpc_server_duration_seconds</span>
+            </div>
+            <div class="field" data-reveal="7">
+              <span class="field__key">binding_state</span>
+              <span class="field__val field__val--hi">bound</span>
+            </div>
+            <div class="field" data-reveal="7">
+              <span class="field__key">confidence_tier</span>
+              <span class="field__val field__val--hi">high · operator-lifted</span>
+            </div>
+          </div>
+
+          <div class="record__final">
+            <div class="record__final-title">Capability degradation report · diff</div>
+            <div class="record__final-body">
+              <b>RPC latency cascade</b> playbook restored to <b>fully_active</b>. One row leaves the degraded list. The operator sees the change in the Capability report card.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="frame__foot">
+    <div class="foot__hint">
+      <b>SPACE</b> advance · <b>←</b> back · <b>R</b> reset · <b>F</b> fullscreen
+    </div>
+    <div class="foot__step">
+      Step <span data-step-label>00</span> <span class="total">/ <span data-step-total>07</span></span>
+    </div>
+    <div class="foot__caption">
+      The hot path is always a deterministic lookup against the resolved binding. Cascade cost is paid once.
+    </div>
+  </footer>
+
+</div>
+
+<script>window.TOTAL_STEPS = 7;</script>
+<script src="shared.js"></script>
+<script>
+  // Mark the "active" tier (most-recently revealed) for the inset highlight.
+  (function () {
+    const tiers = Array.from(document.querySelectorAll('.tier'));
+    function syncActive() {
+      const step = parseInt(document.body.getAttribute('data-step'), 10) || 0;
+      tiers.forEach((t) => {
+        const at = parseInt(t.getAttribute('data-reveal'), 10);
+        t.classList.toggle('is-active', step === at);
+      });
+    }
+    new MutationObserver(syncActive).observe(document.body, { attributes: true, attributeFilter: ['data-step'] });
+    syncActive();
+  })();
+</script>
+</body>
+</html>

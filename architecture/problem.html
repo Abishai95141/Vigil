@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Problem statement · Vigil</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  .stage {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-rows: auto 1fr auto auto;
+    gap: 18px;
+    min-height: 0;
+  }
+
+  /* ---------- Row A: the big asymmetry (2 columns) ---------- */
+  .asym {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 28px;
+    align-items: stretch;
+    min-height: 0;
+  }
+  .asym__side {
+    position: relative;
+    padding: 22px 26px 22px;
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    gap: 12px;
+    opacity: 0.30;
+    transition: opacity var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
+  }
+  .asym__side.is-on { opacity: 1; border-color: var(--ink-hi); background: var(--surface-2); }
+  .asym__role {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    transition: color var(--dur) var(--ease-out);
+  }
+  .asym__side.is-on .asym__role { color: var(--ink-hi); }
+  .asym__head {
+    font-family: var(--display);
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--ink-hi);
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+  }
+  .asym__head em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-mid);
+    letter-spacing: -0.005em;
+  }
+  .asym__rows {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 6px 16px;
+    align-items: baseline;
+    align-content: center;
+  }
+  .asym__num {
+    font-family: var(--display);
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--ink-hi);
+    line-height: 1;
+  }
+  .asym__num--small { font-size: 22px; }
+  .asym__lbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    line-height: 1.4;
+  }
+  .asym__lbl b { color: var(--ink-hi); font-weight: 500; }
+
+  .asym__foot {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--body);
+    font-weight: 300;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ink-mid);
+  }
+  .asym__foot b { color: var(--ink-hi); font-weight: 500; }
+  .asym__foot em {
+    font-family: var(--body);
+    font-style: italic;
+    color: var(--ink-low);
+  }
+  .asym__side--scarce {
+    background-image:
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.025) 0 6px, transparent 6px 12px);
+  }
+  .asym__side--scarce.is-on {
+    background-image:
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 6px, transparent 6px 12px);
+  }
+
+  .asym__pivot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 6px;
+    opacity: 0.30;
+    transition: opacity var(--dur) var(--ease-out);
+  }
+  .asym__pivot.is-on { opacity: 1; }
+  .asym__pivot-rule {
+    width: 1px;
+    flex: 1;
+    background: var(--rule-strong);
+    min-height: 30px;
+  }
+  .asym__pivot-vs {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-hi);
+    padding: 6px 10px;
+    border: 1px solid var(--ink-hi);
+    background: var(--plane);
+    white-space: nowrap;
+  }
+
+  /* ---------- Row B: three operator questions ---------- */
+  .questions {
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    padding: 18px 24px;
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 24px;
+    align-items: center;
+    opacity: 0.25;
+    transition: opacity var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
+  }
+  .questions.is-on { opacity: 1; border-color: var(--ink-hi); background: var(--surface-2); }
+  .questions__head {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .questions__role {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+  }
+  .questions.is-on .questions__role { color: var(--ink-hi); }
+  .questions__name {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--ink-hi);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .questions__name em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-mid);
+    font-size: 12px;
+  }
+  .questions__sub {
+    font-family: var(--body);
+    font-weight: 300;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--ink-mid);
+  }
+  .qrows {
+    display: grid;
+    gap: 10px;
+  }
+  .qrow {
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    gap: 18px;
+    align-items: center;
+    padding: 10px 14px;
+    border: 1px solid var(--rule);
+    background: var(--plane);
+    opacity: 0;
+    transform: translateX(-8px);
+    transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out);
+  }
+  .questions.is-on .qrow { opacity: 1; transform: translateX(0); }
+  .questions.is-on .qrow:nth-child(2) { transition-delay: 0.1s; }
+  .questions.is-on .qrow:nth-child(3) { transition-delay: 0.2s; }
+  .qrow__num {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--ink-low);
+    text-align: center;
+  }
+  .qrow__q {
+    font-family: var(--display);
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--ink-hi);
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+  }
+  .qrow__q em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-mid);
+  }
+  .qrow__hint {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-low);
+    padding: 5px 9px;
+    border: 1px solid var(--rule-strong);
+    white-space: nowrap;
+  }
+
+  /* ---------- Row C: audience constraints ---------- */
+  .audience {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 24px;
+    align-items: center;
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    padding: 16px 24px;
+    opacity: 0.25;
+    transition: opacity var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
+  }
+  .audience.is-on { opacity: 1; border-color: var(--ink-hi); background: var(--surface-2); }
+  .audience__head {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .audience__role {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+  }
+  .audience.is-on .audience__role { color: var(--ink-hi); }
+  .audience__name {
+    font-family: var(--display);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--ink-hi);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .audience__name em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-mid);
+    font-size: 12px;
+  }
+  .audience__list {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .acard {
+    border: 1px solid var(--rule);
+    background: var(--plane);
+    padding: 10px 12px 11px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out);
+  }
+  .audience.is-on .acard { opacity: 1; transform: translateY(0); }
+  .audience.is-on .acard:nth-child(2) { transition-delay: 0.07s; }
+  .audience.is-on .acard:nth-child(3) { transition-delay: 0.14s; }
+  .audience.is-on .acard:nth-child(4) { transition-delay: 0.21s; }
+  .acard__k {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+  }
+  .acard__v {
+    font-family: var(--display);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink-hi);
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+  }
+  .acard__v em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-mid);
+    font-size: 11.5px;
+  }
+
+  /* ---------- Row D: the thesis ---------- */
+  .thesis {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 32px;
+    align-items: center;
+    padding: 20px 28px;
+    border-top: 1px solid var(--rule);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out);
+  }
+  .thesis.is-on { opacity: 1; transform: translateY(0); }
+  .thesis__line {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: var(--ink-hi);
+    line-height: 1.2;
+  }
+  .thesis__line em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-mid);
+  }
+  .thesis__line b { color: var(--ink-hi); font-weight: 700; }
+  .thesis__rhs {
+    text-align: right;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    line-height: 1.8;
+  }
+  .thesis__rhs strong { color: var(--ink-hi); font-weight: 500; }
+</style>
+</head>
+<body data-step="0">
+<div class="frame">
+
+  <header class="frame__head">
+    <div class="head__num">00 · v3 §2
+      <strong>Problem statement</strong>
+    </div>
+    <div>
+      <h1 class="head__title">Kubernetes is <em>observable.</em> It isn't <em>interpreted.</em></h1>
+      <p class="head__sub">Telemetry is abundant. The catalogue of every signal, tool and gotcha exists. What doesn't exist is a single operator with time to correlate it under incident pressure — especially in the places where Kubernetes runs but SREs don't.</p>
+    </div>
+    <div class="head__meta">
+      <div>Vigil · <strong>v3</strong></div>
+      <div>scene <strong>00 / problem</strong></div>
+    </div>
+  </header>
+
+  <section class="frame__stage">
+    <div class="demo-pill">Source · <b>v3 §2 + KG inventory</b></div>
+
+    <div class="stage">
+
+      <!-- Row A: the asymmetry -->
+      <div class="asym">
+        <div class="asym__side asym__side--abundant" data-reveal="1">
+          <div class="asym__role">Layer A · what's abundant</div>
+          <div class="asym__head">Telemetry, <em>catalogued.</em></div>
+          <div class="asym__rows">
+            <span class="asym__num">589</span>
+            <span class="asym__lbl">Signal types in the canonical KG<br/><b>metrics · logs · events · traces</b></span>
+            <span class="asym__num">47</span>
+            <span class="asym__lbl">Entity types — pods, nodes, services, PVCs, deployments…</span>
+            <span class="asym__num">3,709</span>
+            <span class="asym__lbl">Documented relationships — <em>emitted_by, attaches_to, requires_capability, has_gotcha…</em></span>
+            <span class="asym__num asym__num--small">38</span>
+            <span class="asym__lbl">Tools that emit them — Prometheus · OTel · Kubelet · etcd · CNI · mesh sidecars</span>
+          </div>
+          <div class="asym__foot">
+            Every cluster ships with this firehose. Bytes are not the bottleneck — <b>the data exists.</b>
+          </div>
+        </div>
+
+        <div class="asym__pivot" data-reveal="2">
+          <div class="asym__pivot-rule"></div>
+          <div class="asym__pivot-vs">vs</div>
+          <div class="asym__pivot-rule"></div>
+        </div>
+
+        <div class="asym__side asym__side--scarce" data-reveal="2">
+          <div class="asym__role">Layer B · what's scarce</div>
+          <div class="asym__head">Interpretation, <em>under pressure.</em></div>
+          <div class="asym__rows">
+            <span class="asym__num">1</span>
+            <span class="asym__lbl">Operator <b>on call</b> at 02:14 — often new to the cluster</span>
+            <span class="asym__num asym__num--small">6–12</span>
+            <span class="asym__lbl">Disconnected dashboards open across windows</span>
+            <span class="asym__num asym__num--small">0</span>
+            <span class="asym__lbl">Tools that correlate <em>across</em> resource types — they all show <b>their own slice</b></span>
+            <span class="asym__num asym__num--small">∞</span>
+            <span class="asym__lbl">Permutations of <em>"is this related to that?"</em> the operator must hold in their head</span>
+          </div>
+          <div class="asym__foot">
+            The gap isn't in <b>raw data availability</b>. It's in <b>correlated interpretation across resource interdependencies</b>.
+          </div>
+        </div>
+      </div>
+
+      <!-- Row B: three operator questions -->
+      <div class="questions" data-reveal="3">
+        <div class="questions__head">
+          <div class="questions__role">The questions that motivate v3</div>
+          <div class="questions__name">No dashboard <em>answers these.</em></div>
+          <div class="questions__sub">Each one requires correlation across two or more resource types. None of them are exotic — they're what every on-call asks first.</div>
+        </div>
+        <div class="qrows">
+          <div class="qrow">
+            <div class="qrow__num">Q1</div>
+            <div class="qrow__q">"Which pod is causing <em>the CPU spikes?"</em></div>
+            <div class="qrow__hint">pod ↔ container ↔ cgroup ↔ node</div>
+          </div>
+          <div class="qrow">
+            <div class="qrow__num">Q2</div>
+            <div class="qrow__q">"How are PVC I/O patterns <em>linked to pod restarts?"</em></div>
+            <div class="qrow__hint">pvc ↔ pod ↔ kubelet evictions ↔ events</div>
+          </div>
+          <div class="qrow">
+            <div class="qrow__num">Q3</div>
+            <div class="qrow__q">"Are services influencing <em>each other's resource use?"</em></div>
+            <div class="qrow__hint">service ↔ pod-role ↔ node ↔ neighbour pods</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row C: audience constraints -->
+      <div class="audience" data-reveal="4">
+        <div class="audience__head">
+          <div class="audience__role">The audience constraint</div>
+          <div class="audience__name">Edge &amp; industrial,<br/><em>not the SRE penthouse.</em></div>
+        </div>
+        <div class="audience__list">
+          <div class="acard">
+            <div class="acard__k">team</div>
+            <div class="acard__v">No dedicated SRE<br/><em>operator is generalist</em></div>
+          </div>
+          <div class="acard">
+            <div class="acard__k">compute</div>
+            <div class="acard__v">Limited headroom<br/><em>can't compete with workload</em></div>
+          </div>
+          <div class="acard">
+            <div class="acard__k">network</div>
+            <div class="acard__v">Intermittent · constrained<br/><em>air-gap is on the roadmap</em></div>
+          </div>
+          <div class="acard">
+            <div class="acard__k">data</div>
+            <div class="acard__v">Strict residency<br/><em>no exfil, no SaaS-only</em></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row D: thesis -->
+      <div class="thesis" data-reveal="5">
+        <div class="thesis__line">
+          The gap isn't <em>data.</em> It's <b>connecting it</b> — under pressure, on the edge.
+        </div>
+        <div class="thesis__rhs">
+          <div><strong>Surface</strong>, do not act</div>
+          <div><strong>Honest</strong> partial coverage</div>
+          <div>Operator stays <strong>in the loop</strong></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="frame__foot">
+    <div class="foot__hint">
+      <b>SPACE</b> advance · <b>←</b> back · <b>R</b> reset · <b>F</b> fullscreen
+    </div>
+    <div class="foot__step">
+      Step <span data-step-label>00</span> <span class="total">/ <span data-step-total>05</span></span>
+    </div>
+    <div class="foot__caption">
+      Numbers from the canonical KG · v3 §2 problem context · audience profile from §2 / §6
+    </div>
+  </footer>
+
+</div>
+
+<script>window.TOTAL_STEPS = 5;</script>
+<script src="shared.js"></script>
+</body>
+</html>

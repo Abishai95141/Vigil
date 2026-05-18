@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>06 — Two-tier identity · Vigil</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  .stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 18px;
+    min-height: 0;
+  }
+
+  /* ---------- 1) Timeline scrubber (top) ---------- */
+  .scrub {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 20px;
+    align-items: center;
+    padding: 0 4px;
+  }
+  .scrub__label {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+  }
+  .scrub__rail {
+    position: relative;
+    height: 22px;
+    border-bottom: 1px dashed var(--rule-strong);
+  }
+  .scrub__tick {
+    position: absolute;
+    bottom: -1px;
+    width: 1px;
+    height: 8px;
+    background: var(--ink-mute);
+    transition: background var(--dur) var(--ease-out);
+  }
+  .scrub__tick.is-on { background: var(--ink-hi); height: 12px; }
+  .scrub__tick-label {
+    position: absolute;
+    bottom: 12px;
+    transform: translateX(-50%);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    color: var(--ink-low);
+    text-transform: uppercase;
+    transition: color var(--dur) var(--ease-out);
+  }
+  .scrub__tick.is-on + .scrub__tick-label,
+  .scrub__tick-label.is-on { color: var(--ink-hi); }
+  .scrub__now {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-hi);
+    padding: 4px 10px;
+    border: 1px solid var(--ink-hi);
+  }
+
+  /* ---------- 2) Main viz: 2 lanes ---------- */
+  .viz {
+    display: grid;
+    grid-template-rows: 1fr auto 1fr;
+    gap: 16px;
+    min-height: 0;
+  }
+
+  /* INSTANCE lane (top) — 4 PodInstance cards across time, plus current-Node */
+  .lane-instances {
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    padding: 18px 24px;
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 24px;
+    align-items: center;
+    position: relative;
+    min-height: 0;
+  }
+  .lane-instances__head {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .lane-instances__role {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+  }
+  .lane-instances__name {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--ink-hi);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .lane-instances__name em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-mid);
+    font-size: 12px;
+  }
+  .lane-instances__sub {
+    font-family: var(--body);
+    font-weight: 300;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--ink-mid);
+  }
+
+  .insts {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    align-items: stretch;
+  }
+  .inst {
+    border: 1px solid var(--rule);
+    background: var(--plane);
+    padding: 12px 14px 11px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    opacity: 0.20;
+    transition:
+      opacity var(--dur) var(--ease-out),
+      border-color var(--dur) var(--ease-out),
+      background var(--dur) var(--ease-out);
+  }
+  .inst.is-on { opacity: 1; }
+  .inst.is-live {
+    border-color: var(--ink-hi);
+    background: var(--surface-2);
+  }
+  .inst.is-term {
+    background-image:
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.045) 0 6px, transparent 6px 12px);
+  }
+  .inst__t {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-low);
+  }
+  .inst.is-on .inst__t { color: var(--ink-mid); }
+  .inst.is-live .inst__t { color: var(--ink-hi); }
+  .inst__uid {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink);
+    word-break: break-all;
+    margin: 2px 0 4px;
+  }
+  .inst__uid b { color: var(--ink-hi); font-weight: 500; }
+  .inst__row {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-mid);
+    line-height: 1.45;
+  }
+  .inst__row .k { color: var(--ink-low); letter-spacing: 0.14em; text-transform: uppercase; font-size: 8.5px; }
+  .inst__row .v { color: var(--ink); }
+  .inst__row .v b { color: var(--ink-hi); font-weight: 500; }
+  .inst__state {
+    margin-top: 6px;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-low);
+    padding: 4px 7px;
+    border: 1px solid var(--rule);
+    align-self: flex-start;
+  }
+  .inst.is-term .inst__state {
+    color: var(--ink);
+    border-color: var(--rule-strong);
+    background: rgba(245,245,244,0.04);
+  }
+  .inst.is-live .inst__state {
+    color: var(--plane);
+    background: var(--ink-hi);
+    border-color: var(--ink-hi);
+  }
+  .inst__detach {
+    margin-top: 4px;
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    font-size: 10px;
+    color: var(--ink-low);
+    line-height: 1.4;
+  }
+
+  /* ---------- Link rail between lanes ---------- */
+  .link-rail {
+    position: relative;
+    height: 56px;
+    overflow: visible;
+  }
+  .link-rail svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    overflow: visible;
+  }
+  .link {
+    stroke: var(--ink-mute);
+    stroke-width: 1;
+    fill: none;
+    opacity: 0;
+    transition: opacity var(--dur) var(--ease-out), stroke var(--dur) var(--ease-out);
+  }
+  .link.is-on { opacity: 1; }
+  .link--history.is-on { stroke: var(--ink-low); stroke-dasharray: 4 3; }
+  .link--live.is-on    { stroke: var(--ink-hi); stroke-width: 1.4; }
+  .link__cap {
+    fill: var(--ink-low);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    opacity: 0;
+    transition: opacity var(--dur) var(--ease-out);
+  }
+  .link__cap.is-on { opacity: 1; fill: var(--ink-mid); }
+
+  /* LOGICAL lane (bottom) — PodRole card centered */
+  .lane-role {
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    padding: 18px 24px;
+    display: grid;
+    grid-template-columns: 220px 1fr 280px;
+    gap: 24px;
+    align-items: center;
+    position: relative;
+    min-height: 0;
+    transition: border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
+  }
+  .lane-role.is-on { border-color: var(--ink-hi); background: var(--surface-2); }
+  .lane-role__head {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .lane-role__role {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+  }
+  .lane-role.is-on .lane-role__role { color: var(--ink-hi); }
+  .lane-role__name {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--ink-hi);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .lane-role__name em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-mid);
+    font-size: 12px;
+  }
+  .lane-role__sub {
+    font-family: var(--body);
+    font-weight: 300;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--ink-mid);
+  }
+  .role-card {
+    border: 1px solid var(--rule-strong);
+    background: var(--plane);
+    padding: 14px 18px 16px;
+    min-height: 0;
+    opacity: 0.20;
+    transition: opacity var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
+    position: relative;
+  }
+  .role-card.is-on { opacity: 1; border-color: var(--ink-hi); }
+  .role-card__title {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink-hi);
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+    margin-bottom: 8px;
+  }
+  .role-card__title em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-mid);
+    font-size: 12px;
+  }
+  .role-card__rows {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 4px 12px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    line-height: 1.55;
+  }
+  .role-card__rows .k { color: var(--ink-low); letter-spacing: 0.16em; text-transform: uppercase; font-size: 9px; }
+  .role-card__rows .v { color: var(--ink); }
+  .role-card__rows .v b { color: var(--ink-hi); font-weight: 500; }
+  .role-card__hist {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--rule);
+    font-family: var(--mono);
+    font-size: 9.5px;
+    color: var(--ink-mid);
+    line-height: 1.7;
+  }
+  .role-card__hist b { color: var(--ink-hi); font-weight: 500; }
+  .role-card__hist .live { color: var(--ink-hi); }
+
+  /* Service-selects ghost edge */
+  .service {
+    text-align: right;
+    opacity: 0.20;
+    transition: opacity var(--dur) var(--ease-out);
+  }
+  .service.is-on { opacity: 1; }
+  .service__head {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-hi);
+    margin-bottom: 6px;
+  }
+  .service__name {
+    font-family: var(--display);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink-hi);
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+    margin-bottom: 4px;
+  }
+  .service__sub {
+    font-family: var(--body);
+    font-weight: 300;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--ink-mid);
+  }
+  .service__sub b { color: var(--ink-hi); font-weight: 500; }
+
+  /* ---------- 3) Query strip (bottom) ---------- */
+  .queries {
+    display: grid;
+    grid-template-columns: auto repeat(3, 1fr);
+    gap: 14px;
+    align-items: stretch;
+  }
+  .queries__role {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    padding-right: 14px;
+    border-right: 1px solid var(--rule);
+    align-self: center;
+  }
+  .qry {
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    padding: 12px 14px 13px;
+    opacity: 0.20;
+    transform: translateY(6px);
+    transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
+  }
+  .qry.is-on {
+    opacity: 1;
+    transform: translateY(0);
+    border-color: var(--ink-hi);
+  }
+  .qry__layer {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-hi);
+    margin-bottom: 4px;
+  }
+  .qry__q {
+    font-family: var(--display);
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--ink-hi);
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+    margin-bottom: 5px;
+  }
+  .qry__q em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-mid);
+  }
+  .qry__hint {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-mid);
+    line-height: 1.45;
+  }
+  .qry__hint b { color: var(--ink-hi); font-weight: 500; }
+
+  /* Demo pill */
+  .demo-pill-row {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+</style>
+</head>
+<body data-step="0">
+<div class="frame">
+
+  <header class="frame__head">
+    <div class="head__num">06 · v3 §9
+      <strong>Two-tier identity</strong>
+    </div>
+    <div>
+      <h1 class="head__title">The pod restarts. <em>The identity doesn't.</em></h1>
+      <p class="head__sub">Every restart in Kubernetes creates a new UID. Without a logical identity, history dies on every restart. Vigil tracks both — the ephemeral PodInstance and the stable PodRole — so the operator can ask coherent questions across time.</p>
+    </div>
+    <div class="head__meta">
+      <div>Vigil · <strong>v3</strong></div>
+      <div>scene <strong>06 / 06</strong></div>
+    </div>
+  </header>
+
+  <section class="frame__stage">
+    <div class="demo-pill">Demo · <b>same workload, four restarts</b></div>
+
+    <div class="stage">
+
+      <!-- 1) Timeline scrubber -->
+      <div class="scrub" data-reveal="1">
+        <div class="scrub__label">timeline · last 5h</div>
+        <div class="scrub__rail">
+          <div class="scrub__tick" style="left:8%;"   data-reveal="2"></div>
+          <div class="scrub__tick-label" style="left:8%;"  data-reveal="2">09:14</div>
+          <div class="scrub__tick" style="left:32%;"  data-reveal="3"></div>
+          <div class="scrub__tick-label" style="left:32%;" data-reveal="3">11:34</div>
+          <div class="scrub__tick" style="left:60%;"  data-reveal="4"></div>
+          <div class="scrub__tick-label" style="left:60%;" data-reveal="4">13:02</div>
+          <div class="scrub__tick" style="left:92%;"  data-reveal="4"></div>
+          <div class="scrub__tick-label" style="left:92%;" data-reveal="4">14:02</div>
+        </div>
+        <div class="scrub__now">now · 14:02</div>
+      </div>
+
+      <!-- 2) Main viz -->
+      <div class="viz">
+
+        <!-- TOP lane: PodInstances over time -->
+        <div class="lane-instances">
+          <div class="lane-instances__head">
+            <div class="lane-instances__role">Layer A · instance</div>
+            <div class="lane-instances__name">PodInstance<br/><em>ephemeral · 1:1 with K8s object</em></div>
+            <div class="lane-instances__sub">A new UID every restart. Bound to a specific Node. Soft-deleted on termination so evidence stays inspectable.</div>
+          </div>
+          <div class="insts">
+            <div class="inst is-term" data-reveal="2">
+              <div class="inst__t">t = 09:14</div>
+              <div class="inst__uid">uid=<b>a4f2…3f2c</b></div>
+              <div class="inst__row"><span class="k">node</span><span class="v">node-<b>a</b></span></div>
+              <div class="inst__row"><span class="k">image</span><span class="v">currency:1.4.0</span></div>
+              <div class="inst__state">terminated</div>
+              <div class="inst__detach">detach: image-rollout</div>
+            </div>
+            <div class="inst is-term" data-reveal="3">
+              <div class="inst__t">t = 11:34</div>
+              <div class="inst__uid">uid=<b>9a1b…7d04</b></div>
+              <div class="inst__row"><span class="k">node</span><span class="v">node-<b>a</b></span></div>
+              <div class="inst__row"><span class="k">image</span><span class="v">currency:1.4.1</span></div>
+              <div class="inst__state">terminated</div>
+              <div class="inst__detach">detach: OOMKilled</div>
+            </div>
+            <div class="inst is-term" data-reveal="4">
+              <div class="inst__t">t = 13:02</div>
+              <div class="inst__uid">uid=<b>7e4d…0a91</b></div>
+              <div class="inst__row"><span class="k">node</span><span class="v">node-<b>b</b></span></div>
+              <div class="inst__row"><span class="k">image</span><span class="v">currency:1.4.1</span></div>
+              <div class="inst__state">terminated</div>
+              <div class="inst__detach">detach: node_drained</div>
+            </div>
+            <div class="inst is-live" data-reveal="4">
+              <div class="inst__t">t = 14:02 · now</div>
+              <div class="inst__uid">uid=<b>7b4f…9e8a</b></div>
+              <div class="inst__row"><span class="k">node</span><span class="v">node-<b>b</b></span></div>
+              <div class="inst__row"><span class="k">image</span><span class="v">currency:1.4.1</span></div>
+              <div class="inst__state">live</div>
+              <div class="inst__detach">&nbsp;</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- LINK rail: edges from each instance down to the role -->
+        <div class="link-rail">
+          <svg viewBox="0 0 1000 56" preserveAspectRatio="none">
+            <!-- 4 instance columns x-centers, then converge to role center ~500 -->
+            <!-- History edges (dashed) for terminated instances -->
+            <path class="link link--history" data-reveal="5" d="M 165,0 C 165,28 500,28 500,56" />
+            <path class="link link--history" data-reveal="5" d="M 380,0 C 380,28 500,28 500,56" />
+            <path class="link link--history" data-reveal="5" d="M 600,0 C 600,28 500,28 500,56" />
+            <!-- Live edge for current instance -->
+            <path class="link link--live"    data-reveal="5" d="M 815,0 C 815,28 500,28 500,56" />
+            <text class="link__cap" data-reveal="6" x="500" y="20" text-anchor="middle">history (3) · current (1) — all attach to one PodRole</text>
+          </svg>
+        </div>
+
+        <!-- BOTTOM lane: PodRole + Service selector -->
+        <div class="lane-role" data-reveal="5">
+          <div class="lane-role__head">
+            <div class="lane-role__role">Layer B · logical</div>
+            <div class="lane-role__name">PodRole<br/><em>stable · controller-bound</em></div>
+            <div class="lane-role__sub">One identity for the whole life of the workload. Edges that <em>persist</em> across restarts live here.</div>
+          </div>
+          <div class="role-card" data-reveal="5">
+            <div class="role-card__title">currencyservice <em>· ns=shop · slot 0</em></div>
+            <div class="role-card__rows">
+              <span class="k">id</span><span class="v"><b>ent.pod_role.currencyservice-0</b></span>
+              <span class="k">controller</span><span class="v"><b>Deployment</b> · currencyservice</span>
+              <span class="k">replica_slot</span><span class="v">0 (hash-bucketed)</span>
+              <span class="k">current_instance</span><span class="v"><b>uid=7b4f…9e8a</b> @ 14:02</span>
+              <span class="k">ontology</span><span class="v">ent.pod_role · v3.2.1</span>
+            </div>
+            <div class="role-card__hist">
+              instance_history (last 5h):
+              &nbsp; a4f2…3f2c &nbsp; → &nbsp; 9a1b…7d04 &nbsp; → &nbsp; 7e4d…0a91 &nbsp; → &nbsp; <span class="live">7b4f…9e8a · live</span>
+            </div>
+          </div>
+          <div class="service" data-reveal="6">
+            <div class="service__head">service-selects → stable</div>
+            <div class="service__name">svc.currency</div>
+            <div class="service__sub">
+              Selects <b>PodRole</b>, not PodInstance. So the Service edge <b>survives</b> every restart — the operator's mental model stays intact.
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 3) Operator query strip -->
+      <div class="queries">
+        <div class="queries__role">Operator can ask</div>
+        <div class="qry" data-reveal="7">
+          <div class="qry__layer">query · live state</div>
+          <div class="qry__q">"what is currencyservice <em>doing right now?"</em></div>
+          <div class="qry__hint">PodRole + <b>current_instance</b> · joins live TSDB samples for the active UID</div>
+        </div>
+        <div class="qry" data-reveal="7">
+          <div class="qry__layer">query · across time</div>
+          <div class="qry__q">"cascade events <em>this week."</em></div>
+          <div class="qry__hint">PodRole + <b>instance_history</b> · stitches per-instance windows into one workload-level view</div>
+        </div>
+        <div class="qry" data-reveal="7">
+          <div class="qry__layer">query · causality</div>
+          <div class="qry__q">"did this restart <em>cause the issue?"</em></div>
+          <div class="qry__hint">diff PodInstance <b>N</b> vs <b>N−1</b> · quantitative state, scheduler decisions, image, node assignment</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="frame__foot">
+    <div class="foot__hint">
+      <b>SPACE</b> advance · <b>←</b> back · <b>R</b> reset · <b>F</b> fullscreen
+    </div>
+    <div class="foot__step">
+      Step <span data-step-label>00</span> <span class="total">/ <span data-step-total>07</span></span>
+    </div>
+    <div class="foot__caption">
+      Every edge carries a basis · k8s_api_fact or inference_rule · postmortem replay never goes cold.
+    </div>
+  </footer>
+
+</div>
+
+<script>window.TOTAL_STEPS = 7;</script>
+<script src="shared.js"></script>
+<script>
+  // Mirror tick highlights — when a tick reveals, color its sibling label too.
+  (function () {
+    function sync() {
+      const step = parseInt(document.body.getAttribute('data-step'), 10) || 0;
+      document.querySelectorAll('.scrub__tick').forEach((t) => {
+        const at = parseInt(t.getAttribute('data-reveal'), 10);
+        t.classList.toggle('is-on', !isNaN(at) && step >= at);
+      });
+      document.querySelectorAll('.scrub__tick-label').forEach((t) => {
+        const at = parseInt(t.getAttribute('data-reveal'), 10);
+        t.classList.toggle('is-on', !isNaN(at) && step >= at);
+      });
+    }
+    new MutationObserver(sync).observe(document.body, { attributes: true, attributeFilter: ['data-step'] });
+    sync();
+  })();
+</script>
+</body>
+</html>

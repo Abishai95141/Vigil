@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>03 — Reasoning fan-out · Vigil</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  .stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-rows: auto 1fr auto auto;
+    gap: 14px;
+    min-height: 0;
+  }
+
+  /* ---------- 1) Evidence stream ---------- */
+  .stream {
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    padding: 12px 18px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 20px;
+    align-items: center;
+    transition: border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
+  }
+  .stream.is-on { border-color: var(--ink-hi); background: var(--surface-2); }
+  .stream__label {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    transition: color var(--dur) var(--ease-out);
+  }
+  .stream.is-on .stream__label { color: var(--ink-hi); }
+  .stream__items {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .ev {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--ink-mid);
+    border: 1px solid var(--rule);
+    padding: 5px 10px;
+    background: var(--plane);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity .5s var(--ease-out), transform .5s var(--ease-out);
+  }
+  .stream.is-on .ev { opacity: 1; transform: translateX(0); }
+  .ev b { color: var(--ink-hi); font-weight: 500; }
+  .ev__t { color: var(--ink-low); letter-spacing: 0.04em; }
+  .ev__dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--ink-mid);
+  }
+  .ev--live .ev__dot {
+    background: var(--ink-hi);
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.14);
+  }
+  .ev--warn .ev__dot {
+    background: transparent;
+    border: 1px solid var(--ink-hi);
+    width: 7px; height: 7px;
+  }
+
+  /* ---------- 2) Three reasoning lanes ---------- */
+  .fans {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    min-height: 0;
+  }
+  .fan {
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    padding: 16px 18px;
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    gap: 12px;
+    min-height: 0;
+    position: relative;
+    transition: border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
+  }
+  .fan.is-on { border-color: var(--ink-hi); background: var(--surface-2); }
+
+  .fan__head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: baseline;
+  }
+  .fan__name {
+    font-family: var(--display);
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--ink-mid);
+    line-height: 1.1;
+    transition: color var(--dur) var(--ease-out);
+  }
+  .fan.is-on .fan__name { color: var(--ink-hi); }
+  .fan__name em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-low);
+    font-size: 12px;
+  }
+  .fan__mode {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    transition: color var(--dur) var(--ease-out);
+  }
+  .fan.is-on .fan__mode { color: var(--ink-mid); }
+
+  .fan__desc {
+    font-family: var(--body);
+    font-weight: 300;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ink-low);
+    transition: color var(--dur) var(--ease-out);
+  }
+  .fan.is-on .fan__desc { color: var(--ink-mid); }
+  .fan__desc b { color: var(--ink-hi); font-weight: 500; }
+
+  .fan__output {
+    border: 1px dashed var(--rule);
+    padding: 12px;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
+  }
+  .fan__output.is-on {
+    opacity: 1;
+    transform: translateY(0);
+    border-color: var(--ink-hi);
+  }
+  .fan__output-kind {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-hi);
+    margin-bottom: 6px;
+  }
+  .fan__output-title {
+    font-family: var(--display);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-hi);
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    margin-bottom: 5px;
+  }
+  .fan__output-body {
+    font-family: var(--body);
+    font-weight: 300;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--ink-mid);
+  }
+  .fan__output--warn {
+    background-image:
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 6px, transparent 6px 12px);
+  }
+
+  .fan__foot {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-low);
+    padding-top: 8px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .fan.is-on .fan__foot { color: var(--ink-mid); }
+  .fan__foot b { color: var(--ink-hi); font-weight: 500; }
+
+  /* Section pip on top-left */
+  .fan__pip {
+    position: absolute;
+    top: -10px;
+    left: 14px;
+    background: var(--plane);
+    padding: 0 8px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-low);
+    transition: color var(--dur) var(--ease-out);
+  }
+  .fan.is-on .fan__pip { color: var(--ink-hi); }
+
+  /* ---------- 3) Master agent (wide) ---------- */
+  .master {
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    padding: 14px 22px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 22px;
+    align-items: center;
+    transition: border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
+    position: relative;
+  }
+  .master.is-on { border-color: var(--ink-hi); background: var(--surface-2); }
+  .master__name {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink-mid);
+    transition: color var(--dur) var(--ease-out);
+  }
+  .master.is-on .master__name { color: var(--ink-hi); }
+  .master__name em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-low);
+  }
+  .master__body {
+    font-family: var(--body);
+    font-weight: 300;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ink-low);
+    transition: color var(--dur) var(--ease-out);
+  }
+  .master.is-on .master__body { color: var(--ink-mid); }
+  .master__body b { color: var(--ink-hi); font-weight: 500; }
+  .master__live {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--ink-mute);
+    transition: background var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
+  }
+  .master.is-on .master__live {
+    background: var(--ink-hi);
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.15);
+    animation: livepulse 1.4s ease-in-out infinite;
+  }
+
+  /* ---------- 4) Operator surface ---------- */
+  .ops {
+    display: grid;
+    grid-template-columns: auto 1fr 1fr 1fr;
+    gap: 14px;
+    align-items: stretch;
+  }
+  .ops__role {
+    align-self: center;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    padding-right: 10px;
+    border-right: 1px solid var(--rule);
+  }
+  .op-card {
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    padding: 12px 14px;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
+  }
+  .op-card.is-on {
+    opacity: 1;
+    transform: translateY(0);
+    border-color: var(--ink-hi);
+  }
+  .op-card__kind {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-hi);
+    margin-bottom: 4px;
+  }
+  .op-card__title {
+    font-family: var(--display);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-hi);
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    margin-bottom: 3px;
+  }
+  .op-card__meta {
+    font-family: var(--body);
+    font-weight: 300;
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--ink-mid);
+  }
+  .op-card--warn {
+    background-image:
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 6px, transparent 6px 12px);
+  }
+  .op-card--solid {
+    background: var(--ink-hi);
+  }
+  .op-card--solid .op-card__kind { color: var(--plane); }
+  .op-card--solid .op-card__title { color: var(--plane); }
+  .op-card--solid .op-card__meta { color: rgba(10,10,10,0.7); }
+</style>
+</head>
+<body data-step="0">
+<div class="frame">
+
+  <header class="frame__head">
+    <div class="head__num">03 · v3 §15–18
+      <strong>Reasoning fan-out</strong>
+    </div>
+    <div>
+      <h1 class="head__title">Three paths in parallel, <em>one synthesis.</em></h1>
+      <p class="head__sub">Evidence fans into deterministic detection, exploratory hypothesis, and cross-domain synthesis. Known patterns get playbooks; unknown patterns get hypotheses; the master agent decides what reaches the operator.</p>
+    </div>
+    <div class="head__meta">
+      <div>Vigil · <strong>v3</strong></div>
+      <div>scene <strong>03 / 04</strong></div>
+    </div>
+  </header>
+
+  <section class="frame__stage">
+    <div class="demo-pill">Demo · <b>parallel reasoning</b></div>
+
+    <div class="stage">
+
+      <!-- 1) Evidence stream -->
+      <div class="stream" data-reveal="1">
+        <div class="stream__label">Evidence stream<br><span style="font-family:var(--body);font-weight:300;text-transform:none;letter-spacing:0;color:var(--ink-low);font-size:11px;">canonical observations + constructor evidence</span></div>
+        <div class="stream__items">
+          <div class="ev"><span class="ev__t">14:01:42</span><span class="ev__dot"></span><b>pod.currency</b> · restart count 3 → 4</div>
+          <div class="ev ev--warn"><span class="ev__t">14:02:09</span><span class="ev__dot"></span><b>heap_used</b> 524M &gt; 0.85 × limit</div>
+          <div class="ev ev--live"><span class="ev__t">14:02:11</span><span class="ev__dot"></span><b>event</b> OOMKilled · ns=shop</div>
+          <div class="ev"><span class="ev__t">14:02:11</span><span class="ev__dot"></span><b>pvc-cart</b> read latency p95 ↑</div>
+        </div>
+      </div>
+
+      <!-- 2) Three lanes -->
+      <div class="fans">
+
+        <!-- Lane A: Signal detection + interpreter -->
+        <div class="fan" data-reveal="2">
+          <div class="fan__pip">§15 · §17</div>
+          <div class="fan__head">
+            <div class="fan__name">Signal detection<br><em>+ interpreter agent</em></div>
+            <div class="fan__mode">Deterministic · pattern match</div>
+          </div>
+          <div class="fan__desc">
+            Runs playbook signatures against canonical observations. On match, an interpreter agent composes a narrative with full evidence linking. <b>No LLM</b> in the detector itself.
+          </div>
+          <div class="fan__output" data-reveal="3">
+            <div class="fan__output-kind">Playbook fires · narrated</div>
+            <div class="fan__output-title">Memory pressure cascade on <em>currencyservice</em></div>
+            <div class="fan__output-body">Pattern: heap_used &gt; 0.85 × limit for 90s, then OOMKilled. Affects: shop / currency. 1 playbook signature matched.</div>
+          </div>
+          <div class="fan__foot"><span>Pattern lib · v3.2.1</span><span><b>active</b></span></div>
+        </div>
+
+        <!-- Lane B: Exploratory agent -->
+        <div class="fan" data-reveal="2">
+          <div class="fan__pip">§16</div>
+          <div class="fan__head">
+            <div class="fan__name">Exploratory agent<br><em>no playbook match</em></div>
+            <div class="fan__mode">Bounded LLM · windowed</div>
+          </div>
+          <div class="fan__desc">
+            Activates when something is happening but <b>nothing in the library</b> explains it. Runs partial-match probes, emits a hypothesis card, optionally flags the pattern as a library candidate.
+          </div>
+          <div class="fan__output fan__output--warn" data-reveal="4">
+            <div class="fan__output-kind">Hypothesis · candidate</div>
+            <div class="fan__output-title">Unbound restarts on <em>node-b</em></div>
+            <div class="fan__output-body">Partial match: 2 of 4 signals on "node-pressure cascade" template. Probe: kubelet evictions climbing. Flagged for pattern-library review.</div>
+          </div>
+          <div class="fan__foot"><span>Cost budget · within limit</span><span><b>candidate</b></span></div>
+        </div>
+
+        <!-- Lane C: Master agent -->
+        <div class="fan" data-reveal="2">
+          <div class="fan__pip">§18</div>
+          <div class="fan__head">
+            <div class="fan__name">Master agent<br><em>cross-domain synthesis</em></div>
+            <div class="fan__mode">Cross-domain · chat backend</div>
+          </div>
+          <div class="fan__desc">
+            Pulls from both playbook firings and exploratory hypotheses. Synthesises a single narrative across domains; escalates if confidence is split or signals conflict.
+          </div>
+          <div class="fan__output" data-reveal="5">
+            <div class="fan__output-kind">Synthesis · escalation</div>
+            <div class="fan__output-title">Conflict in attribution<br><em style="font-family:var(--body);font-style:italic;color:var(--ink-mid);font-weight:300;">memory origin vs storage origin</em></div>
+            <div class="fan__output-body">Two paths fit the evidence: heap-origin (lane A) and pvc-latency-origin (lane B fragment). Asking operator to pick.</div>
+          </div>
+          <div class="fan__foot"><span>State · awaiting operator</span><span><b>escalate</b></span></div>
+        </div>
+
+      </div>
+
+      <!-- 3) Master-agent live indicator strip -->
+      <div class="master" data-reveal="5">
+        <div class="master__live"></div>
+        <div class="master__name">Master agent · <em>synthesis active</em></div>
+        <div class="master__body">
+          Decision rule: <b>surface, do not act</b>. Causal claims bounded by what the playbook signature explicitly supports. Conflicts surface as <b>escalation</b>, never as a guess.
+        </div>
+        <div style="font-family:var(--mono);font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-mid);">v3 §18 · §19</div>
+      </div>
+
+      <!-- 4) Operator surface -->
+      <div class="ops">
+        <div class="ops__role">Operator<br>surface</div>
+        <div class="op-card" data-reveal="6">
+          <div class="op-card__kind">Insight · playbook</div>
+          <div class="op-card__title">Memory cascade · currency</div>
+          <div class="op-card__meta">Narrated · evidence-linked · acknowledge / annotate / suppress</div>
+        </div>
+        <div class="op-card op-card--warn" data-reveal="6">
+          <div class="op-card__kind">Insight · exploratory</div>
+          <div class="op-card__title">Unbound restarts · node-b</div>
+          <div class="op-card__meta">Candidate hypothesis · 2 of 4 partial · review for library</div>
+        </div>
+        <div class="op-card op-card--solid" data-reveal="6">
+          <div class="op-card__kind">Insight · escalation</div>
+          <div class="op-card__title">Pick a cause · 2 options</div>
+          <div class="op-card__meta">Synthesis blocked on operator choice — resume on ack</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="frame__foot">
+    <div class="foot__hint">
+      <b>SPACE</b> advance · <b>←</b> back · <b>R</b> reset · <b>F</b> fullscreen
+    </div>
+    <div class="foot__step">
+      Step <span data-step-label>00</span> <span class="total">/ <span data-step-total>06</span></span>
+    </div>
+    <div class="foot__caption">
+      No LLM in the detector. No causal claim beyond the playbook signature. Conflicts always escalate.
+    </div>
+  </footer>
+
+</div>
+
+<script>window.TOTAL_STEPS = 6;</script>
+<script src="shared.js"></script>
+</body>
+</html>

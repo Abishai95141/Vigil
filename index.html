@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vigil — Kubernetes AI Observability</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Poppins:ital,wght@0,300;0,400;0,500;1,300;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --plane: #0A0A0A;
+    --surface: #121212;
+    --surface-2: #181818;
+    --rule: rgba(245, 245, 244, 0.08);
+    --rule-strong: rgba(245, 245, 244, 0.16);
+    --ink-hi: #FFFFFF;
+    --ink: #F0EFEC;
+    --ink-mid: #A5A5A2;
+    --ink-low: #6A6A67;
+    --ink-mute: #3F3F3D;
+    --display: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --body: 'Poppins', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--plane); color: var(--ink); min-height: 100vh; }
+  body {
+    font-family: var(--body);
+    font-weight: 300;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0;
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(255,255,255,0.025), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(255,255,255,0.02), transparent 60%);
+    pointer-events: none; z-index: 0;
+  }
+  body::after {
+    content: ""; position: fixed; inset: 0;
+    background-image:
+      linear-gradient(var(--rule) 1px, transparent 1px),
+      linear-gradient(90deg, var(--rule) 1px, transparent 1px);
+    background-size: 48px 48px;
+    opacity: 0.35;
+    pointer-events: none; z-index: 0;
+  }
+  main { position: relative; z-index: 1; }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 80px 56px 56px;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 56px;
+    min-height: 100vh;
+  }
+
+  header .crumb {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    margin-bottom: 22px;
+  }
+  header h1 {
+    font-family: var(--display);
+    font-size: 88px;
+    line-height: 0.92;
+    font-weight: 700;
+    letter-spacing: -0.045em;
+    color: var(--ink-hi);
+  }
+  header h1 em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-mid);
+    letter-spacing: -0.02em;
+  }
+  header p {
+    margin-top: 22px;
+    font-family: var(--body);
+    font-weight: 300;
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--ink-mid);
+    max-width: 720px;
+  }
+
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    align-content: center;
+  }
+
+  .tile {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 40px 40px 36px;
+    text-decoration: none;
+    color: var(--ink);
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 18px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s ease, background .2s ease, transform .2s ease;
+    min-height: 320px;
+  }
+  .tile:hover {
+    border-color: var(--ink-hi);
+    background: var(--surface-2);
+    transform: translateY(-2px);
+  }
+  .tile__chip {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-hi);
+    padding: 4px 9px;
+    border: 1px solid var(--ink-hi);
+  }
+  .tile__num {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+  }
+  .tile__title {
+    font-family: var(--display);
+    font-size: 38px;
+    font-weight: 600;
+    color: var(--ink-hi);
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    margin-top: 8px;
+  }
+  .tile__title em {
+    font-family: var(--body);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-mid);
+  }
+  .tile__desc {
+    font-family: var(--body);
+    font-weight: 300;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--ink-mid);
+    max-width: 440px;
+  }
+  .tile__meta {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-low);
+    border-top: 1px solid var(--rule);
+    padding-top: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .tile__meta b { color: var(--ink-hi); font-weight: 500; }
+  .tile__arrow {
+    font-family: var(--display);
+    font-size: 18px;
+    color: var(--ink-hi);
+  }
+
+  footer {
+    padding-top: 28px;
+    border-top: 1px solid var(--rule);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 32px;
+    align-items: end;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    line-height: 1.9;
+  }
+  footer b { color: var(--ink-hi); font-weight: 500; }
+  footer .right { text-align: right; }
+  footer a { color: var(--ink-mid); text-decoration: none; border-bottom: 1px dashed var(--ink-mute); }
+  footer a:hover { color: var(--ink-hi); border-bottom-color: var(--ink-hi); }
+
+  @media (max-width: 880px) {
+    .wrap { padding: 48px 28px 32px; gap: 36px; }
+    header h1 { font-size: 56px; }
+    .tiles { grid-template-columns: 1fr; }
+    .tile { min-height: 260px; padding: 28px 28px 24px; }
+    .tile__title { font-size: 28px; }
+    footer { grid-template-columns: 1fr; gap: 12px; }
+    footer .right { text-align: left; }
+  }
+</style>
+</head>
+<body>
+<main class="wrap">
+
+  <header>
+    <div class="crumb">Vigil &nbsp;·&nbsp; Kubernetes AI Observability &nbsp;·&nbsp; v3 presentation build</div>
+    <h1>Kubernetes is <em>observable.</em><br/>Now it's <em>interpreted.</em></h1>
+    <p>
+      A knowledge-graph-based observability product for Kubernetes. The universal ontology ships with the product; your specific cluster gets its own instance built at install time. Reasoning runs on top. The operator stays in charge of every action.
+    </p>
+  </header>
+
+  <section class="tiles">
+
+    <a class="tile" href="architecture/">
+      <div class="tile__chip">presentation</div>
+      <div>
+        <div class="tile__num">9 scenes · brand-faithful · keyboard-paced</div>
+        <div class="tile__title">Architecture <em>at a glance.</em></div>
+      </div>
+      <p class="tile__desc">
+        Nine standalone scenes — cold open, problem statement, six architecture diagrams, knowledge-graph render, two-tier identity, feasibility. Built for screen recording into the 5-minute pitch. Press <b style="color:var(--ink-hi);font-weight:500;">SPACE</b> to advance through each build-up.
+      </p>
+      <div class="tile__meta">
+        <span>cold open · problem · system · binding · reasoning · evidence · KG · identity · feasibility</span>
+        <span class="tile__arrow">→</span>
+      </div>
+    </a>
+
+    <a class="tile" href="simulation/">
+      <div class="tile__chip">live demo</div>
+      <div>
+        <div class="tile__num">interactive · 8 chapters · operator UX</div>
+        <div class="tile__title">Working <em>product.</em></div>
+      </div>
+      <p class="tile__desc">
+        The actual operator surface. Onboarding, live topology, insight feed, inspector with predictive-watch, evidence chain four levels deep, escalations, annotations, capability degradation report. Every button works. Every claim is verifiable.
+      </p>
+      <div class="tile__meta">
+        <span>onboarding · topology · insights · inspector · evidence · context · settings</span>
+        <span class="tile__arrow">→</span>
+      </div>
+    </a>
+
+  </section>
+
+  <footer>
+    <div>
+      <div>Vigil · <b>v3 design</b></div>
+      <div>k8s ai observability · edge-ready · honest about what it can't see</div>
+    </div>
+    <div class="right">
+      <div><a href="https://github.com/Abishai95141/Vigil">source on github</a></div>
+      <div>built by <b>Team Vigil</b></div>
+    </div>
+  </footer>
+
+</main>
+</body>
+</html>
