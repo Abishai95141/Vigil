@@ -194,15 +194,17 @@
   .commentary .item {
     display: flex;
     align-items: center;
-    padding: 8px 0 8px 14px;
+    padding: 4px 0 4px 12px;
     border-left: 1px solid var(--rule);
+    min-height: 0;
+    overflow: hidden;
     transition: border-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
   }
   .commentary .item-body {
     font-family: var(--body);
     font-weight: 300;
-    font-size: 11.5px;
-    line-height: 1.45;
+    font-size: 10.5px;
+    line-height: 1.35;
     color: var(--ink-mute);
     transition: color var(--dur) var(--ease-out);
   }
@@ -211,11 +213,11 @@
   .commentary .item-num {
     display: block;
     font-family: var(--mono);
-    font-size: 9px;
-    letter-spacing: 0.22em;
+    font-size: 8.5px;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--ink-low);
-    margin-bottom: 3px;
+    margin-bottom: 2px;
   }
   .commentary .item.is-on .item-num { color: var(--ink-hi); }
 
@@ -223,7 +225,8 @@
      Use its own 8-row grid that lines up roughly with the 7 diagram rows + foot. */
   .commentary.row-grid {
     grid-template-rows: repeat(8, 1fr);
-    gap: 6px;
+    gap: 4px;
+    overflow: hidden;
   }
 </style>
 </head>

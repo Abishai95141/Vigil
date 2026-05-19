@@ -10,30 +10,33 @@
     width: 100%;
     height: 100%;
     display: grid;
+    /* hero auto, pillars 1fr fills rest, topo auto */
     grid-template-rows: auto 1fr auto;
-    gap: 18px;
+    gap: 12px;
     min-height: 0;
+    overflow: hidden;
   }
 
   /* ---------- Row A: hero claim ---------- */
   .hero {
     display: grid;
     grid-template-columns: 1fr auto;
-    gap: 28px;
+    gap: 24px;
     align-items: end;
-    padding: 12px 28px 18px;
+    padding: 6px 24px 12px;
     border-bottom: 1px solid var(--rule);
+    min-height: 0;
     opacity: 0.25;
     transition: opacity var(--dur) var(--ease-out);
   }
   .hero.is-on { opacity: 1; }
   .hero__line {
     font-family: var(--display);
-    font-size: 30px;
+    font-size: 22px;
     font-weight: 600;
     color: var(--ink-hi);
     letter-spacing: -0.025em;
-    line-height: 1.1;
+    line-height: 1.15;
     max-width: 720px;
   }
   .hero__line em {
@@ -44,11 +47,11 @@
     letter-spacing: -0.005em;
   }
   .hero__sub {
-    margin-top: 8px;
+    margin-top: 6px;
     font-family: var(--body);
     font-weight: 300;
-    font-size: 13px;
-    line-height: 1.5;
+    font-size: 12px;
+    line-height: 1.45;
     color: var(--ink-mid);
     max-width: 680px;
   }
@@ -68,24 +71,28 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
-    gap: 16px;
+    gap: 14px;
     min-height: 0;
+    overflow: hidden;
   }
   .pillar {
     position: relative;
     border: 1px solid var(--rule);
     background: var(--surface);
-    padding: 20px 22px 18px;
-    display: grid;
-    grid-template-rows: auto auto 1fr auto;
-    gap: 10px;
+    padding: 12px 16px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
     min-height: 0;
+    overflow: hidden;
     opacity: 0.22;
     transition:
       opacity var(--dur) var(--ease-out),
       border-color var(--dur) var(--ease-out),
       background var(--dur) var(--ease-out);
   }
+  .pillar__rows { flex: 1 1 auto; min-height: 0; }
+  .pillar__foot { margin-top: auto; }
   .pillar.is-on { opacity: 1; border-color: var(--ink-hi); background: var(--surface-2); }
 
   /* Section pip on top-left */
@@ -112,7 +119,7 @@
   }
   .pillar__name {
     font-family: var(--display);
-    font-size: 20px;
+    font-size: 17px;
     font-weight: 600;
     color: var(--ink-hi);
     letter-spacing: -0.02em;
@@ -135,11 +142,11 @@
 
   .pillar__claim {
     font-family: var(--display);
-    font-size: 14px;
+    font-size: 12.5px;
     font-weight: 500;
     color: var(--ink-hi);
     letter-spacing: -0.01em;
-    line-height: 1.4;
+    line-height: 1.35;
   }
   .pillar__claim em {
     font-family: var(--body);
@@ -150,29 +157,29 @@
 
   .pillar__rows {
     display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 7px 16px;
+    grid-template-columns: 105px 1fr;
+    gap: 5px 12px;
     align-items: baseline;
     align-content: start;
-    margin-top: 4px;
+    margin-top: 2px;
   }
   .pillar__num {
     font-family: var(--display);
-    font-size: 22px;
+    font-size: 17px;
     font-weight: 700;
     color: var(--ink-hi);
     letter-spacing: -0.025em;
     line-height: 1;
     white-space: nowrap;
   }
-  .pillar__num--small { font-size: 16px; font-weight: 600; }
+  .pillar__num--small { font-size: 12.5px; font-weight: 600; }
   .pillar__lbl {
     font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.16em;
+    font-size: 9px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--ink-mid);
-    line-height: 1.45;
+    line-height: 1.35;
   }
   .pillar__lbl b { color: var(--ink-hi); font-weight: 500; }
   .pillar__lbl em {
@@ -185,14 +192,8 @@
   }
 
   .pillar__foot {
-    margin-top: auto;
-    padding-top: 10px;
-    border-top: 1px solid var(--rule);
-    font-family: var(--body);
-    font-weight: 300;
-    font-size: 11.5px;
-    line-height: 1.5;
-    color: var(--ink-mid);
+    /* Hidden — narrative content moved to voiceover; 4 metric rows are the visual substance */
+    display: none;
   }
   .pillar__foot b { color: var(--ink-hi); font-weight: 500; }
 
@@ -209,11 +210,13 @@
   /* ---------- Row C: deployment topology footer ---------- */
   .topo {
     display: grid;
-    grid-template-columns: 220px 1fr auto;
-    gap: 24px;
+    grid-template-columns: 200px 1fr auto;
+    gap: 22px;
     align-items: center;
-    padding: 14px 20px 14px;
+    padding: 10px 18px 10px;
     border: 1px solid var(--rule);
+    min-height: 0;
+    overflow: hidden;
     background: var(--surface);
     opacity: 0.25;
     transition: opacity var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
